@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Position Margin — Exness Calculator</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#15130f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Margin Calc">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -271,13 +279,13 @@
 
   <header>
     <h1>Position <span>Margin</span></h1>
-    <p>Exness dynamic leverage calculator — equity, instrument, and lot size in, required margin out.</p>
+    <p id="headerSubtitle">Multi-broker leverage calculator — equity, instrument, and lot size in, required margin out.</p>
   </header>
 
   <div class="card" style="border-color:#c1573b40; margin-bottom:14px;">
     <div class="stat-grid">
       <div class="stat">
-        <div class="label">Margin call price (60%)</div>
+        <div class="label" id="marginCallLabel">Margin call price</div>
         <div class="value" id="marginCallPrice">—</div>
       </div>
       <div class="stat">
@@ -342,6 +350,15 @@
 
   <div class="card">
     <div class="field">
+      <label for="broker">Broker</label>
+      <select id="broker">
+        <option value="exness" selected>Exness</option>
+        <option value="justmarkets">JustMarkets</option>
+        <option value="fbs">FBS</option>
+      </select>
+    </div>
+
+    <div class="field">
       <label for="instrument">Instrument</label>
       <select id="instrument">
         <option value="100" data-price="4300">Gold — XAUUSD (100 oz/lot)</option>
@@ -387,14 +404,11 @@
       </div>
       <div class="field">
         <label for="accountType">Account type</label>
-        <select id="accountType">
-          <option value="0">Standard / Cent — 0% stop out</option>
-          <option value="30" selected>Pro / Zero / Raw Spread — 30% stop out</option>
-        </select>
+        <select id="accountType"></select>
       </div>
     </div>
 
-    <div class="field">
+    <div class="field" id="exnessLeverageBlock">
       <label>Leverage</label>
       <div class="leverage-toggle" id="leverageToggle">
         <button data-mode="auto" class="active">Auto (by equity)</button>
@@ -413,10 +427,28 @@
       </label>
       <div class="tier-line" id="tierLine"></div>
     </div>
+
+    <div class="field" id="selfSelectLeverageBlock" style="display:none;">
+      <label for="selfLeverage">Leverage (self-selected)</label>
+      <select id="selfLeverage">
+        <option value="1">1:1</option>
+        <option value="10">1:10</option>
+        <option value="30">1:30</option>
+        <option value="50">1:50</option>
+        <option value="100">1:100</option>
+        <option value="200">1:200</option>
+        <option value="300">1:300</option>
+        <option value="500" selected>1:500</option>
+        <option value="1000">1:1000</option>
+        <option value="2000">1:2000</option>
+        <option value="3000">1:3000</option>
+      </select>
+      <div class="tier-line">Not tied to equity — this broker lets you pick your own leverage up to 1:3000 regardless of balance.</div>
+    </div>
   </div>
 
   <footer>
-    Leverage tiers follow Exness's published equity brackets and can change with account type, instrument, or market conditions around news events — confirm the exact figure with Exness's own trading calculator before placing a real order.
+    Leverage/margin rules follow each broker's published tiers where confirmed. FBS's offshore stop-out/margin-call levels weren't confirmed from public sources — verify the exact figures in your own account before placing a real order.
     <div style="margin-top:10px;">
       <a href="#" id="resetLink" style="color:var(--ink-dim); text-decoration:underline; font-size:0.72rem;">Reset saved inputs</a>
     </div>
@@ -440,6 +472,39 @@
   const directionBtns = document.querySelectorAll('#directionToggle button');
   const accountTypeEl = document.getElementById('accountType');
   const newsCapEl = document.getElementById('newsCap');
+  const brokerEl = document.getElementById('broker');
+  const exnessLeverageBlock = document.getElementById('exnessLeverageBlock');
+  const selfSelectLeverageBlock = document.getElementById('selfSelectLeverageBlock');
+  const selfLeverageEl = document.getElementById('selfLeverage');
+
+  const BROKER_ACCOUNT_TYPES = {
+    exness: [
+      { value: '0,60', label: 'Standard / Cent — 0% stop out, 60% call' },
+      { value: '30,60', label: 'Pro / Zero / Raw Spread — 30% stop out, 60% call' }
+    ],
+    justmarkets: [
+      { value: '20,40', label: 'All account types — 20% stop out, 40% call' }
+    ],
+    fbs: [
+      { value: '20,50', label: 'Standard / Cent / Zero — unconfirmed, typical 20%/50% shown' }
+    ]
+  };
+
+  function populateAccountTypes() {
+    const broker = brokerEl.value;
+    const types = BROKER_ACCOUNT_TYPES[broker];
+    accountTypeEl.innerHTML = types.map((t, i) =>
+      `<option value="${t.value}"${i === types.length - 1 ? ' selected' : ''}>${t.label}</option>`
+    ).join('');
+
+    const isSelfSelect = broker === 'justmarkets' || broker === 'fbs';
+    exnessLeverageBlock.style.display = isSelfSelect ? 'none' : 'block';
+    selfSelectLeverageBlock.style.display = isSelfSelect ? 'block' : 'none';
+
+    const brokerNames = { exness: 'Exness', justmarkets: 'JustMarkets', fbs: 'FBS' };
+    document.getElementById('headerSubtitle').textContent =
+      `${brokerNames[broker]} leverage calculator — equity, instrument, and lot size in, required margin out.`;
+  }
 
   let leverageMode = 'auto';
   let direction = 'buy';
@@ -467,8 +532,12 @@
 
     const tier = equityTier(equity);
     let leverage;
+    const broker = brokerEl.value;
+    const isSelfSelect = broker === 'justmarkets' || broker === 'fbs';
 
-    if (leverageMode === 'auto') {
+    if (isSelfSelect) {
+      leverage = parseFloat(selfLeverageEl.value);
+    } else if (leverageMode === 'auto') {
       leverage = tier.max;
       tierLine.innerHTML = `Equity bracket: <strong>${tier.label}</strong>`;
     } else {
@@ -476,7 +545,7 @@
       tierLine.innerHTML = `Auto bracket for this equity would be <strong>1:${tier.max}</strong> — overridden manually.`;
     }
 
-    if (newsCapEl.checked && leverage > 200) {
+    if (!isSelfSelect && newsCapEl.checked && leverage > 200) {
       leverage = 200;
       tierLine.innerHTML += ` — capped to <strong>1:200</strong> for the news/weekend period.`;
     }
@@ -521,9 +590,9 @@
     // Equity = balance(equity input) + P/L, so P/L = margin*(threshold/100) - equity
     // For buy: P/L = (closePrice - entryPrice) * lots * contractSize
     // For sell: P/L = (entryPrice - closePrice) * lots * contractSize
-    const stopOutPct = parseFloat(accountTypeEl.value);
-    const marginCallPct = 60;
+    const [stopOutPct, marginCallPct] = accountTypeEl.value.split(',').map(Number);
     const unitMove = lots * contractSize;
+    document.getElementById('marginCallLabel').textContent = `Margin call price (${marginCallPct}%)`;
 
     function priceAtThreshold(thresholdPct) {
       if (unitMove <= 0) return null;
@@ -589,6 +658,7 @@
 
   function saveState() {
     const state = {
+      broker: brokerEl.value,
       instrument: instrumentEl.value,
       customContract: customContract.value,
       price: priceEl.value,
@@ -596,6 +666,7 @@
       tp: tpEl.value,
       equity: equityEl.value,
       accountType: accountTypeEl.value,
+      selfLeverage: selfLeverageEl.value,
       newsCap: newsCapEl.checked,
       direction: direction,
       leverageMode: leverageMode,
@@ -613,6 +684,8 @@
       const result = await window.storage.get('calc-inputs', false);
       if (result && result.value) {
         const s = JSON.parse(result.value);
+        if (s.broker !== undefined) brokerEl.value = s.broker;
+        populateAccountTypes();
         if (s.instrument !== undefined) instrumentEl.value = s.instrument;
         if (s.customContract !== undefined) customContract.value = s.customContract;
         if (s.price !== undefined) priceEl.value = s.price;
@@ -620,6 +693,7 @@
         if (s.tp !== undefined) tpEl.value = s.tp;
         if (s.equity !== undefined) equityEl.value = s.equity;
         if (s.accountType !== undefined) accountTypeEl.value = s.accountType;
+        if (s.selfLeverage !== undefined) selfLeverageEl.value = s.selfLeverage;
         if (s.newsCap !== undefined) newsCapEl.checked = !!s.newsCap;
         if (s.manualLeverage !== undefined) manualLeverageEl.value = s.manualLeverage;
 
@@ -630,9 +704,12 @@
         toggleBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === leverageMode));
         manualLeverageEl.style.display = leverageMode === 'manual' ? 'block' : 'none';
         customField.style.display = instrumentEl.value === 'custom' ? 'block' : 'none';
+      } else {
+        populateAccountTypes();
       }
     } catch (e) {
       // no saved state yet — defaults stay as-is
+      populateAccountTypes();
     }
   }
 
@@ -655,6 +732,11 @@
 
   accountTypeEl.addEventListener('change', render);
   newsCapEl.addEventListener('change', render);
+  selfLeverageEl.addEventListener('change', render);
+  brokerEl.addEventListener('change', () => {
+    populateAccountTypes();
+    render();
+  });
 
   directionBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -689,6 +771,12 @@
     }
     location.reload();
   });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    });
+  }
 </script>
 </body>
 </html>

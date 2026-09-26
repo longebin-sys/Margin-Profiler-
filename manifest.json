@@ -1,0 +1,25 @@
+{
+  "name": "Position Margin Calculator",
+  "short_name": "Margin Calc",
+  "description": "Multi-broker leverage and margin calculator",
+  "start_url": "./exness-margin-calculator.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#15130f",
+  "theme_color": "#15130f",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
