@@ -297,9 +297,15 @@
   </div>
 
   <div class="result-card" style="margin-bottom:8px;">
-    <div class="result-headline">
-      <div class="label">Required margin</div>
-      <div class="value" id="marginOut">$0</div>
+    <div class="result-headline" style="display:flex; justify-content:center; gap:28px; text-align:center;">
+      <div>
+        <div class="label">Required margin</div>
+        <div class="value" id="marginOut">$0</div>
+      </div>
+      <div>
+        <div class="label">High risk lots</div>
+        <div class="value" id="highRiskLotsOut" style="color:var(--amber);">0</div>
+      </div>
     </div>
 
     <div class="stat-grid">
@@ -518,6 +524,9 @@
     const maxLotsPctEl = document.getElementById('maxLotsPctOut');
     maxLotsPctEl.textContent = maxLotsPct.toFixed(0) + '%';
     maxLotsPctEl.style.color = maxLotsPct >= 100 ? 'var(--rust)' : (maxLotsPct >= 60 ? 'var(--amber)' : 'var(--ink)');
+
+    const highRiskLots = maxLots / 1.7;
+    document.getElementById('highRiskLotsOut').textContent = highRiskLots.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const fill = document.getElementById('meterFill');
     const clamped = Math.min(pct, 100);
