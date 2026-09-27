@@ -1,8 +1,9 @@
-const CACHE_NAME = 'margin-calc-v1';
+const CACHE_NAME = 'margin-calc-v2';
 const FILES_TO_CACHE = [
-  './exness-margin-calculator.html',
+  './index.html',
   './manifest.json',
-  './icon.svg'
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {

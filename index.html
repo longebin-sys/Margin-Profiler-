@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Margin Calc">
-<link rel="apple-touch-icon" href="icon.svg">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -38,7 +38,7 @@
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
-    padding: 28px 16px 60px;
+    padding: 14px 12px 28px;
   }
 
   .wrap {
@@ -47,15 +47,15 @@
   }
 
   header {
-    margin-bottom: 24px;
+    margin-bottom: 12px;
     border-bottom: 1px solid var(--hairline);
-    padding-bottom: 18px;
+    padding-bottom: 10px;
   }
 
   h1 {
     font-family: 'Fraunces', serif;
     font-weight: 600;
-    font-size: 1.7rem;
+    font-size: 1.35rem;
     margin: 0 0 4px;
     letter-spacing: -0.01em;
   }
@@ -65,26 +65,26 @@
   header p {
     margin: 0;
     color: var(--ink-dim);
-    font-size: 0.88rem;
-    line-height: 1.4;
+    font-size: 0.78rem;
+    line-height: 1.3;
   }
 
   .card {
     background: var(--panel);
     border: 1px solid var(--hairline);
     border-radius: 10px;
-    padding: 18px;
-    margin-bottom: 14px;
+    padding: 12px;
+    margin-bottom: 8px;
   }
 
-  .field { margin-bottom: 16px; }
+  .field { margin-bottom: 10px; }
   .field:last-child { margin-bottom: 0; }
 
   label {
     display: block;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     color: var(--ink-dim);
-    margin-bottom: 6px;
+    margin-bottom: 3px;
   }
 
   .row { display: flex; gap: 10px; }
@@ -96,8 +96,8 @@
     border: 1px solid var(--hairline);
     color: var(--ink);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.98rem;
-    padding: 10px 11px;
+    font-size: 0.9rem;
+    padding: 7px 9px;
     border-radius: 7px;
     outline: none;
     transition: border-color 0.15s ease;
@@ -131,8 +131,8 @@
     border: none;
     color: var(--ink-dim);
     font-family: 'Inter', sans-serif;
-    font-size: 0.82rem;
-    padding: 8px 6px;
+    font-size: 0.78rem;
+    padding: 6px 6px;
     border-radius: 5px;
     cursor: pointer;
   }
@@ -144,10 +144,10 @@
   }
 
   .tier-line {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     color: var(--ink-dim);
-    margin-top: 8px;
-    line-height: 1.5;
+    margin-top: 5px;
+    line-height: 1.35;
   }
 
   .tier-line strong { color: var(--gold-bright); font-weight: 500; }
@@ -157,13 +157,13 @@
     background: var(--panel);
     border: 1px solid var(--hairline);
     border-radius: 10px;
-    padding: 20px 18px;
+    padding: 12px 14px;
   }
 
   .result-headline {
     text-align: center;
-    padding-bottom: 18px;
-    margin-bottom: 16px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
     border-bottom: 1px solid var(--hairline);
   }
 
@@ -175,7 +175,7 @@
 
   .result-headline .value {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 2.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: var(--gold-bright);
     letter-spacing: -0.01em;
@@ -184,8 +184,8 @@
   .stat-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 8px;
+    margin-bottom: 10px;
   }
 
   .stat .label {
@@ -225,11 +225,11 @@
   }
 
   .flag {
-    margin-top: 14px;
-    padding: 10px 12px;
+    margin-top: 8px;
+    padding: 7px 10px;
     border-radius: 7px;
-    font-size: 0.82rem;
-    line-height: 1.4;
+    font-size: 0.76rem;
+    line-height: 1.3;
     border: 1px solid;
   }
 
@@ -238,10 +238,10 @@
   .flag.danger { border-color: #c1573b50; background: #c1573b14; color: #e59a86; }
 
   footer {
-    margin-top: 20px;
-    font-size: 0.74rem;
+    margin-top: 12px;
+    font-size: 0.68rem;
     color: var(--ink-dim);
-    line-height: 1.5;
+    line-height: 1.35;
     text-align: center;
   }
 
@@ -279,10 +279,10 @@
 
   <header>
     <h1>Position <span>Margin</span></h1>
-    <p id="headerSubtitle">Multi-broker leverage calculator — equity, instrument, and lot size in, required margin out.</p>
+    <p>Exness leverage calculator — equity, instrument, and lot size in, required margin out.</p>
   </header>
 
-  <div class="card" style="border-color:#c1573b40; margin-bottom:14px;">
+  <div class="card" style="border-color:#c1573b40; margin-bottom:8px;">
     <div class="stat-grid">
       <div class="stat">
         <div class="label" id="marginCallLabel">Margin call price</div>
@@ -296,7 +296,7 @@
     <div class="tier-line" id="stopOutNote"></div>
   </div>
 
-  <div class="result-card" style="margin-bottom:14px;">
+  <div class="result-card" style="margin-bottom:8px;">
     <div class="result-headline">
       <div class="label">Required margin</div>
       <div class="value" id="marginOut">$0</div>
@@ -329,12 +329,10 @@
       <div class="meter"><div class="meter-fill" id="meterFill" style="width:0%; background:var(--teal);"></div></div>
     </div>
 
-    <div class="tier-line">"Max lots (0% buffer)" is the absolute ceiling this equity can margin at the current leverage — opening that many lots leaves zero room to absorb any adverse price move before a stop-out.</div>
-
     <div class="flag" id="flagOut"></div>
   </div>
 
-  <div class="card" id="tpCard" style="margin-bottom:14px; display:none;">
+  <div class="card" id="tpCard" style="margin-bottom:8px; display:none;">
     <div class="stat-grid">
       <div class="stat">
         <div class="label">Profit at TP</div>
@@ -349,15 +347,6 @@
   </div>
 
   <div class="card">
-    <div class="field">
-      <label for="broker">Broker</label>
-      <select id="broker">
-        <option value="exness" selected>Exness</option>
-        <option value="justmarkets">JustMarkets</option>
-        <option value="fbs">FBS</option>
-      </select>
-    </div>
-
     <div class="field">
       <label for="instrument">Instrument</label>
       <select id="instrument">
@@ -414,42 +403,24 @@
         <button data-mode="auto" class="active">Auto (by equity)</button>
         <button data-mode="manual">Manual</button>
       </div>
-      <select id="manualLeverage" style="display:none; margin-top:10px;">
+      <select id="manualLeverage" style="display:none; margin-top:6px;">
         <option value="2000">1:2000</option>
         <option value="1000">1:1000</option>
         <option value="500" selected>1:500</option>
         <option value="100">1:100</option>
         <option value="30">1:30</option>
       </select>
-      <label style="display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer;">
+      <label style="display:flex; align-items:center; gap:8px; margin-top:8px; cursor:pointer;">
         <input type="checkbox" id="newsCap" style="width:auto; accent-color:var(--gold);">
         <span style="font-size:0.82rem; color:var(--ink-dim);">High-impact news / weekend period (caps leverage at 1:200)</span>
       </label>
       <div class="tier-line" id="tierLine"></div>
     </div>
 
-    <div class="field" id="selfSelectLeverageBlock" style="display:none;">
-      <label for="selfLeverage">Leverage (self-selected)</label>
-      <select id="selfLeverage">
-        <option value="1">1:1</option>
-        <option value="10">1:10</option>
-        <option value="30">1:30</option>
-        <option value="50">1:50</option>
-        <option value="100">1:100</option>
-        <option value="200">1:200</option>
-        <option value="300">1:300</option>
-        <option value="500" selected>1:500</option>
-        <option value="1000">1:1000</option>
-        <option value="2000">1:2000</option>
-        <option value="3000">1:3000</option>
-      </select>
-      <div class="tier-line">Not tied to equity — this broker lets you pick your own leverage up to 1:3000 regardless of balance.</div>
-    </div>
   </div>
 
   <footer>
-    Leverage/margin rules follow each broker's published tiers where confirmed. FBS's offshore stop-out/margin-call levels weren't confirmed from public sources — verify the exact figures in your own account before placing a real order.
-    <div style="margin-top:10px;">
+    <div>
       <a href="#" id="resetLink" style="color:var(--ink-dim); text-decoration:underline; font-size:0.72rem;">Reset saved inputs</a>
     </div>
   </footer>
@@ -472,38 +443,11 @@
   const directionBtns = document.querySelectorAll('#directionToggle button');
   const accountTypeEl = document.getElementById('accountType');
   const newsCapEl = document.getElementById('newsCap');
-  const brokerEl = document.getElementById('broker');
-  const exnessLeverageBlock = document.getElementById('exnessLeverageBlock');
-  const selfSelectLeverageBlock = document.getElementById('selfSelectLeverageBlock');
-  const selfLeverageEl = document.getElementById('selfLeverage');
-
-  const BROKER_ACCOUNT_TYPES = {
-    exness: [
-      { value: '0,60', label: 'Standard / Cent — 0% stop out, 60% call' },
-      { value: '30,60', label: 'Pro / Zero / Raw Spread — 30% stop out, 60% call' }
-    ],
-    justmarkets: [
-      { value: '20,40', label: 'All account types — 20% stop out, 40% call' }
-    ],
-    fbs: [
-      { value: '20,50', label: 'Standard / Cent / Zero — unconfirmed, typical 20%/50% shown' }
-    ]
-  };
 
   function populateAccountTypes() {
-    const broker = brokerEl.value;
-    const types = BROKER_ACCOUNT_TYPES[broker];
-    accountTypeEl.innerHTML = types.map((t, i) =>
-      `<option value="${t.value}"${i === types.length - 1 ? ' selected' : ''}>${t.label}</option>`
-    ).join('');
-
-    const isSelfSelect = broker === 'justmarkets' || broker === 'fbs';
-    exnessLeverageBlock.style.display = isSelfSelect ? 'none' : 'block';
-    selfSelectLeverageBlock.style.display = isSelfSelect ? 'block' : 'none';
-
-    const brokerNames = { exness: 'Exness', justmarkets: 'JustMarkets', fbs: 'FBS' };
-    document.getElementById('headerSubtitle').textContent =
-      `${brokerNames[broker]} leverage calculator — equity, instrument, and lot size in, required margin out.`;
+    accountTypeEl.innerHTML =
+      '<option value="0,60">Standard / Cent — 0% stop out, 60% call</option>' +
+      '<option value="30,60" selected>Pro / Zero / Raw Spread — 30% stop out, 60% call</option>';
   }
 
   let leverageMode = 'auto';
@@ -532,12 +476,8 @@
 
     const tier = equityTier(equity);
     let leverage;
-    const broker = brokerEl.value;
-    const isSelfSelect = broker === 'justmarkets' || broker === 'fbs';
 
-    if (isSelfSelect) {
-      leverage = parseFloat(selfLeverageEl.value);
-    } else if (leverageMode === 'auto') {
+    if (leverageMode === 'auto') {
       leverage = tier.max;
       tierLine.innerHTML = `Equity bracket: <strong>${tier.label}</strong>`;
     } else {
@@ -545,7 +485,7 @@
       tierLine.innerHTML = `Auto bracket for this equity would be <strong>1:${tier.max}</strong> — overridden manually.`;
     }
 
-    if (!isSelfSelect && newsCapEl.checked && leverage > 200) {
+    if (newsCapEl.checked && leverage > 200) {
       leverage = 200;
       tierLine.innerHTML += ` — capped to <strong>1:200</strong> for the news/weekend period.`;
     }
@@ -622,7 +562,7 @@
         : '—';
       const dist = Math.abs(price - stopOutPrice);
       const distPct = price > 0 ? (dist / price) * 100 : 0;
-      note.innerHTML = `That's <strong>${dist.toLocaleString('en-US', {maximumFractionDigits: 2})}</strong> away from your entry price (${distPct.toFixed(2)}% move against you) — assuming this is your only open position and equity stays otherwise unchanged. Required margin also shifts slightly as price moves, so treat this as a close estimate, not exact.`;
+      note.innerHTML = `${dist.toLocaleString('en-US', {maximumFractionDigits: 2})} away (${distPct.toFixed(2)}%)`;
     }
 
     // Take-profit outcome
@@ -658,7 +598,6 @@
 
   function saveState() {
     const state = {
-      broker: brokerEl.value,
       instrument: instrumentEl.value,
       customContract: customContract.value,
       price: priceEl.value,
@@ -666,7 +605,6 @@
       tp: tpEl.value,
       equity: equityEl.value,
       accountType: accountTypeEl.value,
-      selfLeverage: selfLeverageEl.value,
       newsCap: newsCapEl.checked,
       direction: direction,
       leverageMode: leverageMode,
@@ -680,12 +618,11 @@
   }
 
   async function loadState() {
+    populateAccountTypes();
     try {
       const result = await window.storage.get('calc-inputs', false);
       if (result && result.value) {
         const s = JSON.parse(result.value);
-        if (s.broker !== undefined) brokerEl.value = s.broker;
-        populateAccountTypes();
         if (s.instrument !== undefined) instrumentEl.value = s.instrument;
         if (s.customContract !== undefined) customContract.value = s.customContract;
         if (s.price !== undefined) priceEl.value = s.price;
@@ -693,7 +630,6 @@
         if (s.tp !== undefined) tpEl.value = s.tp;
         if (s.equity !== undefined) equityEl.value = s.equity;
         if (s.accountType !== undefined) accountTypeEl.value = s.accountType;
-        if (s.selfLeverage !== undefined) selfLeverageEl.value = s.selfLeverage;
         if (s.newsCap !== undefined) newsCapEl.checked = !!s.newsCap;
         if (s.manualLeverage !== undefined) manualLeverageEl.value = s.manualLeverage;
 
@@ -704,12 +640,9 @@
         toggleBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === leverageMode));
         manualLeverageEl.style.display = leverageMode === 'manual' ? 'block' : 'none';
         customField.style.display = instrumentEl.value === 'custom' ? 'block' : 'none';
-      } else {
-        populateAccountTypes();
       }
     } catch (e) {
       // no saved state yet — defaults stay as-is
-      populateAccountTypes();
     }
   }
 
@@ -732,11 +665,6 @@
 
   accountTypeEl.addEventListener('change', render);
   newsCapEl.addEventListener('change', render);
-  selfLeverageEl.addEventListener('change', render);
-  brokerEl.addEventListener('change', () => {
-    populateAccountTypes();
-    render();
-  });
 
   directionBtns.forEach(btn => {
     btn.addEventListener('click', () => {
