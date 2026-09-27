@@ -400,15 +400,22 @@
     <div class="field" id="exnessLeverageBlock">
       <label>Leverage</label>
       <div class="leverage-toggle" id="leverageToggle">
-        <button data-mode="auto" class="active">Auto (by equity)</button>
-        <button data-mode="manual">Manual</button>
+        <button data-mode="auto">Auto (by equity)</button>
+        <button data-mode="manual" class="active">Manual</button>
       </div>
-      <select id="manualLeverage" style="display:none; margin-top:6px;">
+      <select id="manualLeverage" style="margin-top:6px;">
+        <option value="unlimited">1:Unlimited</option>
         <option value="2000">1:2000</option>
         <option value="1000">1:1000</option>
+        <option value="800">1:800</option>
+        <option value="600">1:600</option>
         <option value="500" selected>1:500</option>
+        <option value="400">1:400</option>
+        <option value="200">1:200</option>
         <option value="100">1:100</option>
-        <option value="30">1:30</option>
+        <option value="50">1:50</option>
+        <option value="20">1:20</option>
+        <option value="2">1:2</option>
       </select>
       <label style="display:flex; align-items:center; gap:8px; margin-top:8px; cursor:pointer;">
         <input type="checkbox" id="newsCap" style="width:auto; accent-color:var(--gold);">
@@ -450,7 +457,7 @@
       '<option value="30,60" selected>Pro / Zero / Raw Spread — 30% stop out, 60% call</option>';
   }
 
-  let leverageMode = 'auto';
+  let leverageMode = 'manual';
   let direction = 'buy';
 
   function equityTier(equity) {
@@ -477,9 +484,15 @@
     const tier = equityTier(equity);
     let leverage;
 
+    let isUnlimited = false;
+
     if (leverageMode === 'auto') {
       leverage = tier.max;
       tierLine.innerHTML = `Equity bracket: <strong>${tier.label}</strong>`;
+    } else if (manualLeverageEl.value === 'unlimited') {
+      isUnlimited = true;
+      leverage = 1000000; // sentinel for calculation only — not a real ratio, see note below
+      tierLine.innerHTML = `"Unlimited" isn't a fixed ratio — Exness calculates margin via a tiny margin percentage instead, so real required margin is likely far lower than shown here. It's also only available under conditions (low equity, ≤5 lots, 10+ closed trades). Verify the actual figure in-platform.`;
     } else {
       leverage = parseFloat(manualLeverageEl.value);
       tierLine.innerHTML = `Auto bracket for this equity would be <strong>1:${tier.max}</strong> — overridden manually.`;
@@ -496,7 +509,7 @@
 
     document.getElementById('marginOut').textContent = fmtUSD(margin);
     document.getElementById('notionalOut').textContent = fmtUSD(notional);
-    document.getElementById('leverageOut').textContent = '1:' + leverage;
+    document.getElementById('leverageOut').textContent = isUnlimited ? '1:Unlimited*' : ('1:' + leverage);
     document.getElementById('pctOut').textContent = pct.toFixed(1) + '%';
 
     const maxLots = (contractSize * price) > 0 ? (equity * leverage) / (contractSize * price) : 0;
@@ -625,10 +638,10 @@
         const s = JSON.parse(result.value);
         if (s.instrument !== undefined) instrumentEl.value = s.instrument;
         if (s.customContract !== undefined) customContract.value = s.customContract;
-        if (s.price !== undefined) priceEl.value = s.price;
-        if (s.lots !== undefined) lotsEl.value = s.lots;
+        if (s.price) priceEl.value = s.price;
+        if (s.lots) lotsEl.value = s.lots;
         if (s.tp !== undefined) tpEl.value = s.tp;
-        if (s.equity !== undefined) equityEl.value = s.equity;
+        if (s.equity) equityEl.value = s.equity;
         if (s.accountType !== undefined) accountTypeEl.value = s.accountType;
         if (s.newsCap !== undefined) newsCapEl.checked = !!s.newsCap;
         if (s.manualLeverage !== undefined) manualLeverageEl.value = s.manualLeverage;
