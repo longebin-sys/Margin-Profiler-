@@ -246,13 +246,13 @@
   }
 
 
-  .mini { padding: 9px 10px; }
-  .mini-row { display: flex; gap: 8px; }
-  .mini-cell { flex: 1; min-width: 0; }
-  .mini-tp { display: flex; gap: 8px; flex: 2; min-width: 0; }
-  .mini .label { font-size: 0.6rem; margin-bottom: 2px; white-space: nowrap; }
-  .mini .value { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 500; white-space: nowrap; }
-  .mini-notes { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 0.62rem; color: var(--ink-dim); }
+  .mini { padding: 8px 10px; }
+  .mini-row { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+  .mini-cell { flex: 1 1 auto; }
+  .mini-tp { display: flex; gap: 12px; flex: 2 1 auto; }
+  .mini .label { font-size: 0.55rem; margin-bottom: 2px; white-space: nowrap; }
+  .mini .value { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500; white-space: nowrap; }
+  .mini-notes { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 0.58rem; color: var(--ink-dim); }
 
 
   .result-card { padding: 9px 10px; }
@@ -309,7 +309,7 @@
   <div class="card mini" style="border-color:#c1573b40; margin-bottom:8px;">
     <div class="mini-row">
       <div class="mini-cell">
-        <div class="label" id="marginCallLabel">Margin call price</div>
+        <div class="label" id="marginCallLabel">Margin call</div>
         <div class="value" id="marginCallPrice">—</div>
       </div>
       <div class="mini-cell">
@@ -577,7 +577,7 @@
     // For sell: P/L = (entryPrice - closePrice) * lots * contractSize
     const [stopOutPct, marginCallPct] = accountTypeEl.value.split(',').map(Number);
     const unitMove = lots * contractSize;
-    document.getElementById('marginCallLabel').textContent = `Margin call price (${marginCallPct}%)`;
+    document.getElementById('marginCallLabel').textContent = `Margin call (${marginCallPct}%)`;
 
     function priceAtThreshold(thresholdPct) {
       if (unitMove <= 0) return null;
