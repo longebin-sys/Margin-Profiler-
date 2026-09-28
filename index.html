@@ -245,6 +245,30 @@
     text-align: center;
   }
 
+
+  .mini { padding: 9px 10px; }
+  .mini-row { display: flex; gap: 8px; }
+  .mini-cell { flex: 1; min-width: 0; }
+  .mini-tp { display: flex; gap: 8px; flex: 2; min-width: 0; }
+  .mini .label { font-size: 0.6rem; margin-bottom: 2px; white-space: nowrap; }
+  .mini .value { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 500; white-space: nowrap; }
+  .mini-notes { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 0.62rem; color: var(--ink-dim); }
+
+
+  .result-card { padding: 9px 10px; }
+  .result-card .result-headline { padding-bottom: 7px; margin-bottom: 7px; gap: 12px !important; }
+  .result-card .label { font-size: 0.6rem; margin-bottom: 2px; white-space: nowrap; }
+  .result-card .result-headline .value,
+  .result-card .stat .value { font-size: 0.8rem; font-weight: 500; }
+  .result-card .result-headline .value { font-weight: 600; }
+  .result-card .stat-grid { gap: 6px; margin-bottom: 7px; }
+  .result-card .meter-labels { font-size: 0.62rem; margin-bottom: 3px; }
+  .result-card .meter { height: 6px; }
+  .result-card .flag { font-size: 0.66rem; padding: 5px 8px; margin-top: 6px; line-height: 1.25; }
+
+
+  #accountType { font-size: 0.68rem; padding: 7px 18px 7px 7px; background-position: calc(100% - 12px) center, calc(100% - 7px) center; }
+
   .wanpis-mark {
     position: fixed;
     bottom: 14px;
@@ -282,44 +306,57 @@
     <p>Exness leverage calculator — equity, instrument, and lot size in, required margin out.</p>
   </header>
 
-  <div class="card" style="border-color:#c1573b40; margin-bottom:8px;">
-    <div class="stat-grid">
-      <div class="stat">
+  <div class="card mini" style="border-color:#c1573b40; margin-bottom:8px;">
+    <div class="mini-row">
+      <div class="mini-cell">
         <div class="label" id="marginCallLabel">Margin call price</div>
         <div class="value" id="marginCallPrice">—</div>
       </div>
-      <div class="stat">
+      <div class="mini-cell">
         <div class="label">Stop-out price</div>
         <div class="value" id="stopOutPrice" style="color:var(--rust);">—</div>
       </div>
+      <div class="mini-tp" id="tpCard" style="display:none;">
+        <div class="mini-cell">
+          <div class="label">Profit at TP</div>
+          <div class="value" id="tpProfit" style="color:var(--teal);">—</div>
+        </div>
+        <div class="mini-cell">
+          <div class="label">Return on margin</div>
+          <div class="value" id="tpReturnPct">—</div>
+        </div>
+      </div>
     </div>
-    <div class="tier-line" id="stopOutNote"></div>
+    <div class="mini-notes">
+      <span id="stopOutNote"></span>
+      <span id="tpNote"></span>
+    </div>
   </div>
 
   <div class="result-card" style="margin-bottom:8px;">
-    <div class="result-headline" style="display:flex; justify-content:center; gap:28px; text-align:center;">
+    <div class="result-headline" style="display:flex; justify-content:center; gap:18px; text-align:center;">
       <div>
         <div class="label">Required margin</div>
         <div class="value" id="marginOut">$0</div>
       </div>
       <div>
+        <div class="label">Max lots (0% buffer)</div>
+        <div class="value" id="maxLotsOut">0</div>
+      </div>
+      <div>
         <div class="label">High risk lots</div>
-        <div class="value" id="highRiskLotsOut" style="color:var(--amber);">0</div>
+        <div class="value" id="highRiskLotsOut" style="color:var(--rust);">0</div>
+      </div>
+      <div>
+        <div class="label">Safe lots</div>
+        <div class="value" id="safeLotsOut" style="color:var(--teal);">0</div>
       </div>
     </div>
 
     <div class="stat-grid">
       <div class="stat">
-        <div class="label">Notional value</div>
-        <div class="value" id="notionalOut">$0</div>
-      </div>
-      <div class="stat">
         <div class="label">Leverage used</div>
         <div class="value" id="leverageOut">1:500</div>
-      </div>
-      <div class="stat">
-        <div class="label">Max lots (0% buffer)</div>
-        <div class="value" id="maxLotsOut">0</div>
       </div>
       <div class="stat">
         <div class="label">Of that max, used</div>
@@ -336,20 +373,6 @@
     </div>
 
     <div class="flag" id="flagOut"></div>
-  </div>
-
-  <div class="card" id="tpCard" style="margin-bottom:8px; display:none;">
-    <div class="stat-grid">
-      <div class="stat">
-        <div class="label">Profit at TP</div>
-        <div class="value" id="tpProfit" style="color:var(--teal);">—</div>
-      </div>
-      <div class="stat">
-        <div class="label">Return on margin</div>
-        <div class="value" id="tpReturnPct">—</div>
-      </div>
-    </div>
-    <div class="tier-line" id="tpNote"></div>
   </div>
 
   <div class="card">
@@ -459,8 +482,8 @@
 
   function populateAccountTypes() {
     accountTypeEl.innerHTML =
-      '<option value="0,60">Standard / Cent — 0% stop out, 60% call</option>' +
-      '<option value="30,60" selected>Pro / Zero / Raw Spread — 30% stop out, 60% call</option>';
+      '<option value="0,60" selected>Standard / Cent — 0% stop out</option>' +
+      '<option value="30,60">Pro / Zero / Raw — 30% stop out</option>';
   }
 
   let leverageMode = 'manual';
@@ -514,7 +537,6 @@
     const pct = equity > 0 ? (margin / equity) * 100 : 0;
 
     document.getElementById('marginOut').textContent = fmtUSD(margin);
-    document.getElementById('notionalOut').textContent = fmtUSD(notional);
     document.getElementById('leverageOut').textContent = isUnlimited ? '1:Unlimited*' : ('1:' + leverage);
     document.getElementById('pctOut').textContent = pct.toFixed(1) + '%';
 
@@ -527,6 +549,7 @@
 
     const highRiskLots = maxLots / 1.7;
     document.getElementById('highRiskLotsOut').textContent = highRiskLots.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('safeLotsOut').textContent = (highRiskLots / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const fill = document.getElementById('meterFill');
     const clamped = Math.min(pct, 100);
@@ -592,8 +615,9 @@
     const tpVal = parseFloat(tpEl.value);
     if (!tpEl.value || isNaN(tpVal) || unitMove <= 0) {
       tpCard.style.display = 'none';
+      document.getElementById('tpNote').textContent = '';
     } else {
-      tpCard.style.display = 'block';
+      tpCard.style.display = 'flex';
       const profit = direction === 'buy'
         ? (tpVal - price) * unitMove
         : (price - tpVal) * unitMove;
@@ -602,7 +626,7 @@
       const returnEl = document.getElementById('tpReturnPct');
       const tpNote = document.getElementById('tpNote');
 
-      profitEl.textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      profitEl.textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       profitEl.style.color = profit >= 0 ? 'var(--teal)' : 'var(--rust)';
 
       const returnPct = margin > 0 ? (profit / margin) * 100 : 0;
@@ -611,8 +635,8 @@
 
       const moveDist = Math.abs(tpVal - price);
       const movePct = price > 0 ? (moveDist / price) * 100 : 0;
-      const dir = (direction === 'buy' && tpVal > price) || (direction === 'sell' && tpVal < price) ? 'in your favor' : 'against you — this TP is on the wrong side of price for a ' + direction;
-      tpNote.innerHTML = `A ${moveDist.toLocaleString('en-US', {maximumFractionDigits: 2})} move (${movePct.toFixed(2)}%) ${dir}.`;
+      const dir = (direction === 'buy' && tpVal > price) || (direction === 'sell' && tpVal < price) ? 'in your favor' : 'against you (wrong side for a ' + direction + ')';
+      tpNote.innerHTML = `TP: ${moveDist.toLocaleString('en-US', {maximumFractionDigits: 2})} move (${movePct.toFixed(2)}%) ${dir}.`;
     }
 
     saveState();
@@ -651,12 +675,11 @@
         if (s.lots) lotsEl.value = s.lots;
         if (s.tp !== undefined) tpEl.value = s.tp;
         if (s.equity) equityEl.value = s.equity;
-        if (s.accountType !== undefined) accountTypeEl.value = s.accountType;
         if (s.newsCap !== undefined) newsCapEl.checked = !!s.newsCap;
         if (s.manualLeverage !== undefined) manualLeverageEl.value = s.manualLeverage;
 
         direction = s.direction === 'sell' ? 'sell' : 'buy';
-        leverageMode = s.leverageMode === 'manual' ? 'manual' : 'auto';
+        leverageMode = 'manual'; // always open in Manual
 
         directionBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-dir') === direction));
         toggleBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === leverageMode));
@@ -670,7 +693,7 @@
 
   function fmtUSD(n) {
     if (!isFinite(n)) n = 0;
-    return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   instrumentEl.addEventListener('change', () => {
