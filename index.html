@@ -386,21 +386,6 @@
   </div>
 
   <div class="card">
-    <div class="field">
-      <label for="instrument">Instrument</label>
-      <select id="instrument">
-        <option value="100" data-price="4300">Gold — XAUUSD (100 oz/lot)</option>
-        <option value="100000" data-price="1.08">Forex major (100,000 units/lot)</option>
-        <option value="10000" data-price="1.08">Forex mini (10,000 units/lot)</option>
-        <option value="custom" data-price="">Custom contract size</option>
-      </select>
-    </div>
-
-    <div class="field" id="customContractField" style="display:none;">
-      <label for="customContract">Contract size (units per lot)</label>
-      <input type="number" id="customContract" value="100" step="any">
-    </div>
-
     <div class="row">
       <div class="field">
         <label for="price">Price (USD)</label>
@@ -408,7 +393,7 @@
       </div>
       <div class="field">
         <label for="lots">Lots</label>
-        <input type="number" id="lots" value="32" step="0.01">
+        <input type="number" id="lots" value="0.03" step="0.01">
       </div>
     </div>
 
@@ -419,7 +404,7 @@
 
     <div class="field">
       <label for="equity">Account equity (USD)</label>
-      <input type="number" id="equity" value="60000" step="any">
+      <input type="number" id="equity" value="60" step="any">
     </div>
 
     <div class="row">
@@ -476,9 +461,7 @@
 <div class="wanpis-mark"><span class="dot"></span>Wanpis</div>
 
 <script>
-  const instrumentEl = document.getElementById('instrument');
-  const customField = document.getElementById('customContractField');
-  const customContract = document.getElementById('customContract');
+  // Gold (XAUUSD) only — fixed at 100 oz per lot
   const priceEl = document.getElementById('price');
   const lotsEl = document.getElementById('lots');
   const tpEl = document.getElementById('tp');
@@ -508,10 +491,7 @@
   }
 
   function getContractSize() {
-    if (instrumentEl.value === 'custom') {
-      return parseFloat(customContract.value) || 0;
-    }
-    return parseFloat(instrumentEl.value) || 0;
+    return 100;
   }
 
   function render() {
@@ -664,8 +644,6 @@
 
   function saveState() {
     const state = {
-      instrument: instrumentEl.value,
-      customContract: customContract.value,
       price: priceEl.value,
       lots: lotsEl.value,
       tp: tpEl.value,
@@ -689,8 +667,6 @@
       const result = await window.storage.get('calc-inputs', false);
       if (result && result.value) {
         const s = JSON.parse(result.value);
-        if (s.instrument !== undefined) instrumentEl.value = s.instrument;
-        if (s.customContract !== undefined) customContract.value = s.customContract;
         if (s.price) priceEl.value = s.price;
         if (s.lots) lotsEl.value = s.lots;
         if (s.tp !== undefined) tpEl.value = s.tp;
@@ -704,7 +680,6 @@
         directionBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-dir') === direction));
         toggleBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === leverageMode));
         manualLeverageEl.style.display = leverageMode === 'manual' ? 'block' : 'none';
-        customField.style.display = instrumentEl.value === 'custom' ? 'block' : 'none';
       }
     } catch (e) {
       // no saved state yet — defaults stay as-is
@@ -716,15 +691,7 @@
     return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  instrumentEl.addEventListener('change', () => {
-    customField.style.display = instrumentEl.value === 'custom' ? 'block' : 'none';
-    const opt = instrumentEl.options[instrumentEl.selectedIndex];
-    const suggestedPrice = opt.getAttribute('data-price');
-    if (suggestedPrice) priceEl.value = suggestedPrice;
-    render();
-  });
-
-  [priceEl, lotsEl, equityEl, customContract, manualLeverageEl].forEach(el => {
+  [priceEl, lotsEl, equityEl, manualLeverageEl].forEach(el => {
     el.addEventListener('input', render);
   });
 
