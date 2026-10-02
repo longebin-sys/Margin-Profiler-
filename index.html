@@ -388,6 +388,20 @@
   <div class="card">
     <div class="row">
       <div class="field">
+        <label>Direction</label>
+        <div class="leverage-toggle" id="directionToggle">
+          <button data-dir="buy" class="active">Buy</button>
+          <button data-dir="sell">Sell</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="accountType">Account type</label>
+        <select id="accountType"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
         <label for="price">Price (USD)</label>
         <input type="number" id="price" value="4300" step="any">
       </div>
@@ -405,20 +419,6 @@
     <div class="field">
       <label for="equity">Account equity (USD)</label>
       <input type="number" id="equity" value="60" step="any">
-    </div>
-
-    <div class="row">
-      <div class="field">
-        <label>Direction</label>
-        <div class="leverage-toggle" id="directionToggle">
-          <button data-dir="buy" class="active">Buy</button>
-          <button data-dir="sell">Sell</button>
-        </div>
-      </div>
-      <div class="field">
-        <label for="accountType">Account type</label>
-        <select id="accountType"></select>
-      </div>
     </div>
 
     <div class="field" id="exnessLeverageBlock">
@@ -497,7 +497,6 @@
   function render() {
     const contractSize = getContractSize();
     const price = parseFloat(priceEl.value) || 0;
-    const lots = parseFloat(lotsEl.value) || 0;
     const equity = parseFloat(equityEl.value) || 0;
 
     const tier = equityTier(equity);
@@ -522,6 +521,15 @@
       tierLine.innerHTML += ` — capped to <strong>1:200</strong> for the news/weekend period.`;
     }
 
+    // Lots auto-fills from MDR Lots (40% of max lots) and stays in sync as inputs change.
+    // Skipped while the user is actively typing in the field.
+    const maxLotsForFill = (contractSize * price) > 0 ? (equity * leverage) / (contractSize * price) : 0;
+    const mdrLots = maxLotsForFill * 0.4;
+    if (document.activeElement !== lotsEl) {
+      lotsEl.value = mdrLots.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    const lots = parseFloat(lotsEl.value) || 0;
+
     const notional = contractSize * price * lots;
     const margin = leverage > 0 ? notional / leverage : 0;
     const pct = equity > 0 ? (margin / equity) * 100 : 0;
@@ -530,7 +538,7 @@
     document.getElementById('leverageOut').textContent = isUnlimited ? '1:Unlimited*' : ('1:' + leverage);
     document.getElementById('pctOut').textContent = pct.toFixed(1) + '%';
 
-    const maxLots = (contractSize * price) > 0 ? (equity * leverage) / (contractSize * price) : 0;
+    const maxLots = maxLotsForFill;
     const maxLotsPct = maxLots > 0 ? (lots / maxLots) * 100 : 0;
     document.getElementById('maxLotsOut').textContent = maxLots.toLocaleString('en-US', { maximumFractionDigits: 2 });
     const maxLotsPctEl = document.getElementById('maxLotsPctOut');
@@ -540,7 +548,7 @@
     const highRiskLots = maxLots / 1.7;
     document.getElementById('highRiskLotsOut').textContent = highRiskLots.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('safeLotsOut').textContent = (highRiskLots / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    document.getElementById('saferLotsOut').textContent = (maxLots * 0.4).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('saferLotsOut').textContent = mdrLots.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const fill = document.getElementById('meterFill');
     const clamped = Math.min(pct, 100);
