@@ -253,6 +253,7 @@
   .mini .label { font-size: 0.55rem; margin-bottom: 2px; white-space: nowrap; }
   .mini .value { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500; white-space: nowrap; }
   .mini-notes { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 0.58rem; color: var(--ink-dim); }
+  .mini-note { font-size: 0.58rem; color: var(--ink-dim); margin-top: 2px; }
 
 
   .result-card { padding: 9px 10px; }
@@ -268,6 +269,10 @@
 
 
   #accountType { font-size: 0.68rem; padding: 7px 18px 7px 7px; background-position: calc(100% - 12px) center, calc(100% - 7px) center; }
+
+
+  #directionToggle button[data-dir="buy"].active { background: #3d7fd6; color: #fff; }
+  #directionToggle button[data-dir="sell"].active { background: var(--rust); color: #fff; }
 
   .wanpis-mark {
     position: fixed;
@@ -311,10 +316,12 @@
       <div class="mini-cell">
         <div class="label" id="marginCallLabel">Margin call</div>
         <div class="value" id="marginCallPrice">—</div>
+        <div class="mini-note" id="marginCallNote"></div>
       </div>
       <div class="mini-cell">
         <div class="label">Stop-out price</div>
         <div class="value" id="stopOutPrice" style="color:var(--rust);">—</div>
+        <div class="mini-note" id="stopOutNote"></div>
       </div>
       <div class="mini-tp" id="tpCard" style="display:none;">
         <div class="mini-cell">
@@ -328,7 +335,6 @@
       </div>
     </div>
     <div class="mini-notes">
-      <span id="stopOutNote"></span>
       <span id="tpNote"></span>
     </div>
   </div>
@@ -350,6 +356,10 @@
       <div>
         <div class="label">Safe lots</div>
         <div class="value" id="safeLotsOut" style="color:var(--teal);">0</div>
+      </div>
+      <div>
+        <div class="label">MDR Lots (40%)</div>
+        <div class="value" id="saferLotsOut" style="color:var(--teal);">0</div>
       </div>
     </div>
 
@@ -550,6 +560,7 @@
     const highRiskLots = maxLots / 1.7;
     document.getElementById('highRiskLotsOut').textContent = highRiskLots.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('safeLotsOut').textContent = (highRiskLots / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('saferLotsOut').textContent = (maxLots * 0.4).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const fill = document.getElementById('meterFill');
     const clamped = Math.min(pct, 100);
@@ -594,20 +605,29 @@
 
     const stopOutEl = document.getElementById('stopOutPrice');
     const callEl = document.getElementById('marginCallPrice');
-    const note = document.getElementById('stopOutNote');
+    const stopOutNoteEl = document.getElementById('stopOutNote');
+    const marginCallNoteEl = document.getElementById('marginCallNote');
 
     if (stopOutPrice === null || stopOutPrice <= 0 || isFinite(stopOutPrice) === false) {
       stopOutEl.textContent = '—';
       callEl.textContent = '—';
-      note.textContent = 'Enter lots and contract size to see the liquidation price.';
+      stopOutNoteEl.textContent = 'Enter lots to see this.';
+      marginCallNoteEl.textContent = '';
     } else {
       stopOutEl.textContent = '$' + stopOutPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
-      callEl.textContent = marginCallPriceVal > 0
-        ? '$' + marginCallPriceVal.toLocaleString('en-US', { maximumFractionDigits: 2 })
-        : '—';
       const dist = Math.abs(price - stopOutPrice);
       const distPct = price > 0 ? (dist / price) * 100 : 0;
-      note.innerHTML = `${dist.toLocaleString('en-US', {maximumFractionDigits: 2})} away (${distPct.toFixed(2)}%)`;
+      stopOutNoteEl.innerHTML = `${dist.toLocaleString('en-US', {maximumFractionDigits: 2})} away (${distPct.toFixed(2)}%)`;
+
+      if (marginCallPriceVal > 0) {
+        callEl.textContent = '$' + marginCallPriceVal.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        const callDist = Math.abs(price - marginCallPriceVal);
+        const callDistPct = price > 0 ? (callDist / price) * 100 : 0;
+        marginCallNoteEl.innerHTML = `${callDist.toLocaleString('en-US', {maximumFractionDigits: 2})} away (${callDistPct.toFixed(2)}%)`;
+      } else {
+        callEl.textContent = '—';
+        marginCallNoteEl.textContent = '';
+      }
     }
 
     // Take-profit outcome
@@ -704,8 +724,21 @@
     render();
   });
 
-  [priceEl, lotsEl, tpEl, equityEl, customContract, manualLeverageEl].forEach(el => {
+  [priceEl, lotsEl, equityEl, customContract, manualLeverageEl].forEach(el => {
     el.addEventListener('input', render);
+  });
+
+  tpEl.addEventListener('input', () => {
+    const tpVal = parseFloat(tpEl.value);
+    const priceVal = parseFloat(priceEl.value);
+    if (!isNaN(tpVal) && !isNaN(priceVal) && tpVal !== priceVal) {
+      const newDirection = tpVal > priceVal ? 'buy' : 'sell';
+      if (newDirection !== direction) {
+        direction = newDirection;
+        directionBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-dir') === direction));
+      }
+    }
+    render();
   });
 
   accountTypeEl.addEventListener('change', render);
