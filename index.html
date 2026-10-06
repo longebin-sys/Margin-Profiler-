@@ -526,7 +526,7 @@
     const maxLotsForFill = (contractSize * price) > 0 ? (equity * leverage) / (contractSize * price) : 0;
     const mdrLots = maxLotsForFill * 0.4;
     if (document.activeElement !== lotsEl) {
-      lotsEl.value = mdrLots.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      lotsEl.value = mdrLots.toFixed(2);
     }
     const lots = parseFloat(lotsEl.value) || 0;
 
@@ -702,6 +702,8 @@
   [priceEl, lotsEl, equityEl, manualLeverageEl].forEach(el => {
     el.addEventListener('input', render);
   });
+
+  lotsEl.addEventListener('blur', render);
 
   tpEl.addEventListener('input', () => {
     const tpVal = parseFloat(tpEl.value);
