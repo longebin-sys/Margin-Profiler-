@@ -655,14 +655,7 @@
     <div class="card">
       <div class="row">
         <div class="field">
-          <label>Direction</label>
-          <div class="leverage-toggle" id="posDirToggle">
-            <button data-dir="buy" class="active">Buy</button>
-            <button data-dir="sell">Sell</button>
-          </div>
-        </div>
-        <div class="field">
-          <label for="posEntry">Entry price</label>
+          <label for="posEntry">Entry price (buy/sell is detected automatically)</label>
           <input type="number" id="posEntry" step="any" placeholder="e.g. 4300">
         </div>
       </div>
@@ -1035,7 +1028,6 @@
     });
   });
 
-  const posDirBtns = document.querySelectorAll('#posDirToggle button');
   const posEntryEl = document.getElementById('posEntry');
   const posLotsEl = document.getElementById('posLots');
   const posCloseEl = document.getElementById('posClose');
@@ -1045,7 +1037,6 @@
   const clearPositionsBtn = document.getElementById('clearPositionsBtn');
 
   let positions = []; // {id, dir, entry, lots, close(number|null), note}
-  let posDirection = 'buy';
 
   // No live price anywhere. Open trades are valued at the price of the NEXT trade:
   // the Entry price you are typing, or the most recent trade's entry if the field is empty.
@@ -1056,12 +1047,37 @@
     return null;
   }
 
+  // Buy/sell is detected from price movement: the first trade is pending until the next
+  // entry price arrives. Lower than the first entry = SELL, higher = BUY. Later trades follow it.
+  function openTrades() {
+    return positions.filter(p => p.close === null || p.close === undefined || isNaN(p.close));
+  }
+
+  function dirFromPrice(firstEntry, price) {
+    if (price === null || isNaN(price) || price === firstEntry) return null;
+    return price < firstEntry ? 'sell' : 'buy';
+  }
+
+  function effDir(pos, mark) {
+    return pos.dir || dirFromPrice(pos.entry, mark);
+  }
+
+  function dirForNewTrade(entry) {
+    const open = openTrades();
+    if (open.length === 0) return null; // first trade of a new round: pending
+    const known = open.find(p => p.dir);
+    if (known) return known.dir;
+    return dirFromPrice(open[0].entry, entry);
+  }
+
   function computePL(pos, mark) {
     const hasClose = pos.close !== null && pos.close !== undefined && !isNaN(pos.close);
     const closeVal = hasClose ? pos.close : mark;
     if (closeVal === null || closeVal === undefined || isNaN(closeVal)) return null;
+    const dir = effDir(pos, closeVal);
+    if (!dir) return 0;
     const unitMove = pos.lots * 100; // XAUUSD, 100 oz/lot, matches calculator tab
-    return pos.dir === 'buy' ? (closeVal - pos.entry) * unitMove : (pos.entry - closeVal) * unitMove;
+    return dir === 'buy' ? (closeVal - pos.entry) * unitMove : (pos.entry - closeVal) * unitMove;
   }
 
   function totalPLAt(mark) {
@@ -1101,7 +1117,7 @@
           <div class="pos-item" data-id="${pos.id}">
             <div class="pos-item-top">
               <div class="pos-badges">
-                <span class="pos-badge ${pos.dir}">${pos.dir.toUpperCase()}</span>
+                <span class="pos-badge ${effDir(pos, mark) || ''}">${effDir(pos, mark) ? effDir(pos, mark).toUpperCase() : 'BUY/SELL: PENDING'}</span>
                 <span class="pos-status ${isOpen ? 'open' : 'closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span>
               </div>
               <button class="pos-del" data-id="${pos.id}" title="Delete">✕</button>
@@ -1190,14 +1206,6 @@
     return d.innerHTML;
   }
 
-  posDirBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      posDirBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      posDirection = btn.getAttribute('data-dir');
-    });
-  });
-
   addPositionBtn.addEventListener('click', () => {
     const entry = parseFloat(posEntryEl.value);
     const lots = parseFloat(posLotsEl.value);
@@ -1212,9 +1220,12 @@
     posEntryEl.style.borderColor = 'var(--hairline)';
     posLotsEl.style.borderColor = 'var(--hairline)';
 
+    const newDir = dirForNewTrade(entry);
+    if (newDir) openTrades().forEach(p => { if (!p.dir) p.dir = newDir; });
+
     positions.push({
       id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-      dir: posDirection,
+      dir: newDir,
       entry: entry,
       lots: lots,
       close: (close !== null && !isNaN(close)) ? close : null,
