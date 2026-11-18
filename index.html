@@ -69,6 +69,35 @@
     line-height: 1.3;
   }
 
+  /* Tabs — ADDED */
+  .tab-nav {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    background: var(--panel-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 9px;
+    padding: 3px;
+  }
+
+  .tab-nav button {
+    flex: 1;
+    padding: 8px 6px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+
+  .tab-nav button.active {
+    background: var(--gold);
+    color: #1a1712;
+    font-weight: 600;
+  }
+
   .card {
     background: var(--panel);
     border: 1px solid var(--hairline);
@@ -90,7 +119,7 @@
   .row { display: flex; gap: 10px; }
   .row .field { flex: 1; }
 
-  input[type="number"], select {
+  input[type="number"], input[type="text"], select {
     width: 100%;
     background: var(--panel-raised);
     border: 1px solid var(--hairline);
@@ -113,7 +142,7 @@
     background-repeat: no-repeat;
   }
 
-  input[type="number"]:focus, select:focus {
+  input[type="number"]:focus, input[type="text"]:focus, select:focus {
     border-color: var(--gold);
   }
 
@@ -274,6 +303,108 @@
   #directionToggle button[data-dir="buy"].active { background: #3d7fd6; color: #fff; }
   #directionToggle button[data-dir="sell"].active { background: var(--rust); color: #fff; }
 
+  /* Positions tab — ADDED */
+  #posDirToggle button[data-dir="buy"].active { background: #3d7fd6; color: #fff; }
+  #posDirToggle button[data-dir="sell"].active { background: var(--rust); color: #fff; }
+
+  .btn-primary {
+    width: 100%;
+    padding: 9px;
+    border-radius: 7px;
+    border: 1px solid var(--gold);
+    background: var(--gold);
+    color: #1a1712;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 7px;
+    border-radius: 7px;
+    border: 1px solid var(--hairline);
+    background: var(--panel-raised);
+    color: var(--ink-dim);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .pos-item {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  .pos-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .pos-badges { display: flex; align-items: center; gap: 6px; }
+
+  .pos-badge {
+    font-size: 0.66rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+
+  .pos-badge.buy { background: #3d7fd630; color: #8fb8ea; }
+  .pos-badge.sell { background: #c1573b30; color: #e59a86; }
+
+  .pos-status {
+    font-size: 0.6rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+
+  .pos-status.open { background: #d1943d30; color: #e3bb85; }
+  .pos-status.closed { background: #5aa89630; color: #9ccbbe; }
+
+  .pos-del {
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 2px 4px;
+    line-height: 1;
+  }
+
+  .pos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px 10px;
+  }
+
+  .pos-grid .l { color: var(--ink-dim); font-size: 0.6rem; margin-bottom: 2px; }
+  .pos-grid .v { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+
+  .pos-pl { grid-column: span 1; }
+  .pos-pl .v.pos { color: var(--teal); }
+  .pos-pl .v.neg { color: var(--rust); }
+
+  .pos-note {
+    margin-top: 7px;
+    font-size: 0.7rem;
+    color: var(--ink-dim);
+    font-style: italic;
+  }
+
+  .pos-empty {
+    text-align: center;
+    color: var(--ink-dim);
+    font-size: 0.78rem;
+    padding: 18px 10px;
+  }
+
   .wanpis-mark {
     position: fixed;
     bottom: 14px;
@@ -310,6 +441,13 @@
     <h1>Position <span>Margin</span></h1>
     <p>Exness leverage calculator — equity, instrument, and lot size in, required margin out.</p>
   </header>
+
+  <div class="tab-nav" id="tabNav">
+    <button data-tab="calc" class="active">Calculator</button>
+    <button data-tab="positions">Positions</button>
+  </div>
+
+  <div id="calcView">
 
   <div class="card mini" style="border-color:#c1573b40; margin-bottom:8px;">
     <div class="mini-row">
@@ -449,6 +587,86 @@
     </div>
 
   </div>
+
+  </div>
+  <!-- /calcView -->
+
+  <div id="positionsView" style="display:none;">
+
+    <div class="card" style="margin-bottom:8px;">
+      <div class="row">
+        <div class="field">
+          <label for="livePrice">Live price (USD)</label>
+          <input type="number" id="livePrice" step="any" placeholder="e.g. 4300">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="useCalcPrice" class="btn-secondary">Use calculator price</button>
+        </div>
+      </div>
+      <div class="mini-note">Used to value any position left with no close price (i.e. still open).</div>
+    </div>
+
+    <div class="result-card" style="margin-bottom:8px;">
+      <div class="result-headline" style="display:flex; justify-content:center; gap:18px; text-align:center;">
+        <div>
+          <div class="label">Total P/L</div>
+          <div class="value" id="totalPL">$0.00</div>
+        </div>
+        <div>
+          <div class="label">Open</div>
+          <div class="value" id="openCount">0</div>
+        </div>
+        <div>
+          <div class="label">Closed</div>
+          <div class="value" id="closedCount">0</div>
+        </div>
+        <div>
+          <div class="label">Total lots</div>
+          <div class="value" id="totalLots">0.00</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="field">
+          <label>Direction</label>
+          <div class="leverage-toggle" id="posDirToggle">
+            <button data-dir="buy" class="active">Buy</button>
+            <button data-dir="sell">Sell</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="posEntry">Entry price</label>
+          <input type="number" id="posEntry" step="any" placeholder="e.g. 4300">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="posLots">Lots</label>
+          <input type="number" id="posLots" step="0.01" placeholder="e.g. 0.03">
+        </div>
+        <div class="field">
+          <label for="posClose">Close price (optional)</label>
+          <input type="number" id="posClose" step="any" placeholder="leave blank if open">
+        </div>
+      </div>
+      <div class="field">
+        <label for="posNote">Note (optional)</label>
+        <input type="text" id="posNote" placeholder="e.g. add-on after breakout">
+      </div>
+      <button id="addPositionBtn" class="btn-primary">+ Add position</button>
+    </div>
+
+    <div id="positionsList"></div>
+
+    <div class="field" style="margin-top:4px;">
+      <button id="clearPositionsBtn" class="btn-secondary">Clear all positions</button>
+    </div>
+
+  </div>
+  <!-- /positionsView -->
 
   <footer>
     <div>
@@ -760,6 +978,227 @@
       navigator.serviceWorker.register('service-worker.js').catch(() => {});
     });
   }
+
+  // ===================================================================================
+  // ADDED — Tabs + Positions (scale-in tracker / running P&L)
+  // ===================================================================================
+
+  const calcView = document.getElementById('calcView');
+  const positionsView = document.getElementById('positionsView');
+  const tabBtns = document.querySelectorAll('#tabNav button');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      calcView.style.display = tab === 'calc' ? '' : 'none';
+      positionsView.style.display = tab === 'positions' ? '' : 'none';
+      savePositionsState();
+    });
+  });
+
+  const livePriceEl = document.getElementById('livePrice');
+  const useCalcPriceBtn = document.getElementById('useCalcPrice');
+  const posDirBtns = document.querySelectorAll('#posDirToggle button');
+  const posEntryEl = document.getElementById('posEntry');
+  const posLotsEl = document.getElementById('posLots');
+  const posCloseEl = document.getElementById('posClose');
+  const posNoteEl = document.getElementById('posNote');
+  const addPositionBtn = document.getElementById('addPositionBtn');
+  const positionsListEl = document.getElementById('positionsList');
+  const clearPositionsBtn = document.getElementById('clearPositionsBtn');
+
+  let positions = []; // {id, dir, entry, lots, close(number|null), note}
+  let posDirection = 'buy';
+
+  function computePL(pos, livePrice) {
+    const hasClose = pos.close !== null && pos.close !== undefined && !isNaN(pos.close);
+    const closeVal = hasClose ? pos.close : livePrice;
+    if (closeVal === null || closeVal === undefined || isNaN(closeVal)) return null;
+    const unitMove = pos.lots * 100; // XAUUSD, 100 oz/lot, matches calculator tab
+    return pos.dir === 'buy' ? (closeVal - pos.entry) * unitMove : (pos.entry - closeVal) * unitMove;
+  }
+
+  function fmtSignedUSD(n) {
+    if (n === null || !isFinite(n)) return '—';
+    return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function renderPositions() {
+    const livePrice = parseFloat(livePriceEl.value);
+    const liveVal = isNaN(livePrice) ? null : livePrice;
+
+    let totalPL = 0;
+    let anyPL = false;
+    let openCount = 0;
+    let closedCount = 0;
+    let totalLots = 0;
+
+    if (positions.length === 0) {
+      positionsListEl.innerHTML = '<div class="pos-empty">No positions yet — add your first entry above.</div>';
+    } else {
+      let html = '';
+      // newest first
+      [...positions].reverse().forEach(pos => {
+        const isOpen = pos.close === null || pos.close === undefined || isNaN(pos.close);
+        const pl = computePL(pos, liveVal);
+        if (pl !== null) { totalPL += pl; anyPL = true; }
+        if (isOpen) openCount++; else closedCount++;
+        totalLots += pos.lots;
+
+        const plClass = pl === null ? '' : (pl >= 0 ? 'pos' : 'neg');
+        html += `
+          <div class="pos-item" data-id="${pos.id}">
+            <div class="pos-item-top">
+              <div class="pos-badges">
+                <span class="pos-badge ${pos.dir}">${pos.dir.toUpperCase()}</span>
+                <span class="pos-status ${isOpen ? 'open' : 'closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span>
+              </div>
+              <button class="pos-del" data-id="${pos.id}" title="Delete">✕</button>
+            </div>
+            <div class="pos-grid">
+              <div>
+                <div class="l">Entry</div>
+                <div class="v">$${pos.entry.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+              </div>
+              <div>
+                <div class="l">Lots</div>
+                <div class="v">${pos.lots.toFixed(2)}</div>
+              </div>
+              <div>
+                <div class="l">${isOpen ? 'Valued at (live)' : 'Close'}</div>
+                <div class="v">${isOpen ? (liveVal !== null ? '$' + liveVal.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—') : '$' + pos.close.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+              </div>
+              <div class="pos-pl" style="grid-column: span 3;">
+                <div class="l">${isOpen ? 'Unrealized P/L' : 'Realized P/L'}</div>
+                <div class="v ${plClass}">${fmtSignedUSD(pl)}</div>
+              </div>
+            </div>
+            ${pos.note ? `<div class="pos-note">${escapeHtml(pos.note)}</div>` : ''}
+          </div>`;
+      });
+      positionsListEl.innerHTML = html;
+
+      positionsListEl.querySelectorAll('.pos-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          positions = positions.filter(p => String(p.id) !== String(id));
+          renderPositions();
+          savePositionsState();
+        });
+      });
+    }
+
+    document.getElementById('totalPL').textContent = anyPL ? fmtSignedUSD(totalPL) : '$0.00';
+    document.getElementById('totalPL').style.color = !anyPL ? '' : (totalPL >= 0 ? 'var(--teal)' : 'var(--rust)');
+    document.getElementById('openCount').textContent = openCount;
+    document.getElementById('closedCount').textContent = closedCount;
+    document.getElementById('totalLots').textContent = totalLots.toFixed(2);
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  posDirBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      posDirBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      posDirection = btn.getAttribute('data-dir');
+    });
+  });
+
+  useCalcPriceBtn.addEventListener('click', () => {
+    livePriceEl.value = priceEl.value;
+    renderPositions();
+    savePositionsState();
+  });
+
+  livePriceEl.addEventListener('input', () => {
+    renderPositions();
+    savePositionsState();
+  });
+
+  addPositionBtn.addEventListener('click', () => {
+    const entry = parseFloat(posEntryEl.value);
+    const lots = parseFloat(posLotsEl.value);
+    const closeRaw = posCloseEl.value;
+    const close = closeRaw === '' ? null : parseFloat(closeRaw);
+
+    if (isNaN(entry) || entry <= 0 || isNaN(lots) || lots <= 0) {
+      posEntryEl.style.borderColor = isNaN(entry) || entry <= 0 ? 'var(--rust)' : 'var(--hairline)';
+      posLotsEl.style.borderColor = isNaN(lots) || lots <= 0 ? 'var(--rust)' : 'var(--hairline)';
+      return;
+    }
+    posEntryEl.style.borderColor = 'var(--hairline)';
+    posLotsEl.style.borderColor = 'var(--hairline)';
+
+    positions.push({
+      id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      dir: posDirection,
+      entry: entry,
+      lots: lots,
+      close: (close !== null && !isNaN(close)) ? close : null,
+      note: posNoteEl.value.trim()
+    });
+
+    posEntryEl.value = '';
+    posLotsEl.value = '';
+    posCloseEl.value = '';
+    posNoteEl.value = '';
+
+    renderPositions();
+    savePositionsState();
+  });
+
+  clearPositionsBtn.addEventListener('click', () => {
+    if (positions.length === 0) return;
+    if (confirm('Clear all positions? This can\'t be undone.')) {
+      positions = [];
+      renderPositions();
+      savePositionsState();
+    }
+  });
+
+  function savePositionsState() {
+    const activeTab = document.querySelector('#tabNav button.active')?.getAttribute('data-tab') || 'calc';
+    const state = {
+      positions: positions,
+      livePrice: livePriceEl.value,
+      activeTab: activeTab
+    };
+    try {
+      window.storage.set('positions-state', JSON.stringify(state), false).catch(() => {});
+    } catch (e) {
+      // storage unavailable — positions just won't persist this session
+    }
+  }
+
+  async function loadPositionsState() {
+    try {
+      const result = await window.storage.get('positions-state', false);
+      if (result && result.value) {
+        const s = JSON.parse(result.value);
+        if (Array.isArray(s.positions)) positions = s.positions;
+        if (s.livePrice !== undefined) livePriceEl.value = s.livePrice;
+        if (s.activeTab === 'positions') {
+          tabBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === 'positions'));
+          calcView.style.display = 'none';
+          positionsView.style.display = '';
+        }
+      }
+    } catch (e) {
+      // no saved positions yet — defaults stay as-is
+    }
+  }
+
+  (async () => {
+    await loadPositionsState();
+    renderPositions();
+  })();
 </script>
 </body>
 </html>
