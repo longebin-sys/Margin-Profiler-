@@ -670,10 +670,6 @@
           <input type="number" id="posClose" step="any" placeholder="leave blank if open">
         </div>
       </div>
-      <div class="field">
-        <label for="posNote">Note (optional)</label>
-        <input type="text" id="posNote" placeholder="e.g. add-on after breakout">
-      </div>
       <button id="addPositionBtn" class="btn-primary">+ Add position</button>
     </div>
 
@@ -1031,7 +1027,6 @@
   const posEntryEl = document.getElementById('posEntry');
   const posLotsEl = document.getElementById('posLots');
   const posCloseEl = document.getElementById('posClose');
-  const posNoteEl = document.getElementById('posNote');
   const addPositionBtn = document.getElementById('addPositionBtn');
   const positionsListEl = document.getElementById('positionsList');
   const clearPositionsBtn = document.getElementById('clearPositionsBtn');
@@ -1068,6 +1063,30 @@
     const known = open.find(p => p.dir);
     if (known) return known.dir;
     return dirFromPrice(open[0].entry, entry);
+  }
+
+  // Stop-out price of one trade, using the equity and leverage it was sized with when opened.
+  function stopOutPrice(pos, dir) {
+    const thr = (accountTypeEl.value.split(',').map(Number)[0]) || 0; // stop-out % of the account type
+    const lev = pos.lev || getLeverageFor(parseFloat(equityEl.value) || 0);
+    const eq = pos.eq !== undefined ? pos.eq : (parseFloat(equityEl.value) || 0);
+    const unitMove = pos.lots * 100;
+    if (!(lev > 0) || !(unitMove > 0)) return null;
+    const margin = unitMove * pos.entry / lev;
+    const plNeeded = margin * (thr / 100) - eq;
+    const price = dir === 'buy' ? pos.entry + plNeeded / unitMove : pos.entry - plNeeded / unitMove;
+    return (isFinite(price) && price > 0) ? price : null;
+  }
+
+  function fmtPrice(n) {
+    return n === null ? '—' : '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+
+  function stopOutText(pos, mark) {
+    const dir = effDir(pos, mark);
+    if (dir) return fmtPrice(stopOutPrice(pos, dir));
+    // direction not known yet (first trade): show both possibilities
+    return 'Sell ' + fmtPrice(stopOutPrice(pos, 'sell')) + ' / Buy ' + fmtPrice(stopOutPrice(pos, 'buy'));
   }
 
   function computePL(pos, mark) {
@@ -1135,12 +1154,15 @@
                 <div class="l">${isOpen ? 'Valued at' : 'Close'}</div>
                 <div class="v">${isOpen ? (mark !== null ? '$' + mark.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—') : '$' + pos.close.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
               </div>
-              <div class="pos-pl" style="grid-column: span 3;">
+              <div class="pos-pl">
                 <div class="l">${isOpen ? 'Unrealized P/L' : 'Realized P/L'}</div>
                 <div class="v ${plClass}">${fmtSignedUSD(pl)}</div>
               </div>
+              <div style="grid-column: span 2;">
+                <div class="l">Stop-out price</div>
+                <div class="v" style="color:var(--rust);">${stopOutText(pos, mark)}</div>
+              </div>
             </div>
-            ${pos.note ? `<div class="pos-note">${escapeHtml(pos.note)}</div>` : ''}
           </div>`;
       });
       positionsListEl.innerHTML = html;
@@ -1163,6 +1185,8 @@
 
     updatePosLots();
   }
+
+  const SUB_STOP_DIST = 30; // subsequent trades: stop-out $30 (3000 pips) from entry
 
   function getLeverageFor(eq) {
     let lev;
@@ -1190,9 +1214,19 @@
       return;
     }
     const lev = getLeverageFor(eq);
-    const maxLots = (eq * lev) / (100 * p);
-    posLotsEl.value = (maxLots * 0.4).toFixed(2);
-    hintEl.textContent = `MDR 40% of ${fmtUSD(eq)} (base ${fmtUSD(baseEquity)} ${profit >= 0 ? '+' : '-'} ${fmtUSD(Math.abs(profit))} profit) @ ${p}`;
+    const eqText = `${fmtUSD(eq)} (base ${fmtUSD(baseEquity)} ${profit >= 0 ? '+' : '-'} ${fmtUSD(Math.abs(profit))} profit)`;
+    if (openTrades().length > 0) {
+      // Subsequent trades: size so this trade's stop-out lands SUB_STOP_DIST ($30 = 3000 pips) from entry.
+      // Stop-out when: eq - lots*100*dist = lots*100*p/lev * stopOut%  ->  solve for lots.
+      const thr = (accountTypeEl.value.split(',').map(Number)[0]) || 0;
+      const lots = eq / (100 * (SUB_STOP_DIST + (p * thr) / (100 * lev)));
+      posLotsEl.value = (Math.floor(lots * 100) / 100).toFixed(2); // round down so stop-out is never closer than $30
+      hintEl.textContent = `Stop-out $${SUB_STOP_DIST} (${SUB_STOP_DIST * 100} pips) away, on ${eqText} @ ${p}`;
+    } else {
+      const maxLots = (eq * lev) / (100 * p);
+      posLotsEl.value = (maxLots * 0.4).toFixed(2);
+      hintEl.textContent = `First trade: MDR 40% of ${eqText} @ ${p}`;
+    }
   }
 
   ['input', 'change', 'click', 'focusout'].forEach(evt =>
@@ -1220,22 +1254,26 @@
     posEntryEl.style.borderColor = 'var(--hairline)';
     posLotsEl.style.borderColor = 'var(--hairline)';
 
+    const baseEq = parseFloat(equityEl.value) || 0;
+    const eqAtOpen = baseEq + totalPLAt(entry); // same equity the lots were sized on
+    const levAtOpen = getLeverageFor(eqAtOpen);
     const newDir = dirForNewTrade(entry);
     if (newDir) openTrades().forEach(p => { if (!p.dir) p.dir = newDir; });
 
     positions.push({
       id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
       dir: newDir,
+      eq: eqAtOpen,
+      lev: levAtOpen,
       entry: entry,
       lots: lots,
       close: (close !== null && !isNaN(close)) ? close : null,
-      note: posNoteEl.value.trim()
+      note: ''
     });
 
     posEntryEl.value = '';
     posLotsEl.value = '';
     posCloseEl.value = '';
-    posNoteEl.value = '';
 
     renderPositions();
     savePositionsState();
