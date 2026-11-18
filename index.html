@@ -1089,6 +1089,13 @@
     return 'Sell ' + fmtPrice(stopOutPrice(pos, 'sell')) + ' / Buy ' + fmtPrice(stopOutPrice(pos, 'buy'));
   }
 
+  // Floating profit = P/L of the currently open trades only, valued at the given price.
+  function floatingAt(mark) {
+    let t = 0;
+    openTrades().forEach(p => { const pl = computePL(p, mark); if (pl !== null) t += pl; });
+    return t;
+  }
+
   function computePL(pos, mark) {
     const hasClose = pos.close !== null && pos.close !== undefined && !isNaN(pos.close);
     const closeVal = hasClose ? pos.close : mark;
@@ -1206,8 +1213,16 @@
     const calcPrice = parseFloat(priceEl.value);
     const mark = markPrice();
     const p = mark !== null ? mark : calcPrice;
+    const isSub = openTrades().length > 0;
+    const floating = floatingAt(p);
+    // Subsequent trades are sized on the floating profit ONLY; the first trade uses account equity.
     const profit = positions.length ? totalPLAt(p) : 0;
-    const eq = baseEquity + profit;
+    const eq = isSub ? floating : baseEquity + profit;
+    if (isSub && !(floating > 0)) {
+      posLotsEl.value = '';
+      hintEl.textContent = 'No floating profit yet — nothing to risk on the next trade.';
+      return;
+    }
     if (!(eq > 0) || !(p > 0)) {
       posLotsEl.value = '';
       hintEl.textContent = 'Enter the entry price to auto-size lots.';
@@ -1215,13 +1230,13 @@
     }
     const lev = getLeverageFor(eq);
     const eqText = `${fmtUSD(eq)} (base ${fmtUSD(baseEquity)} ${profit >= 0 ? '+' : '-'} ${fmtUSD(Math.abs(profit))} profit)`;
-    if (openTrades().length > 0) {
+    if (isSub) {
       // Subsequent trades: size so this trade's stop-out lands SUB_STOP_DIST ($30 = 3000 pips) from entry.
       // Stop-out when: eq - lots*100*dist = lots*100*p/lev * stopOut%  ->  solve for lots.
       const thr = (accountTypeEl.value.split(',').map(Number)[0]) || 0;
       const lots = eq / (100 * (SUB_STOP_DIST + (p * thr) / (100 * lev)));
       posLotsEl.value = (Math.floor(lots * 100) / 100).toFixed(2); // round down so stop-out is never closer than $30
-      hintEl.textContent = `Stop-out $${SUB_STOP_DIST} (${SUB_STOP_DIST * 100} pips) away, on ${eqText} @ ${p}`;
+      hintEl.textContent = `Floating profit ${fmtUSD(floating)} only — stop-out $${SUB_STOP_DIST} (${SUB_STOP_DIST * 100} pips) away @ ${p}`;
     } else {
       const maxLots = (eq * lev) / (100 * p);
       posLotsEl.value = (maxLots * 0.4).toFixed(2);
@@ -1255,7 +1270,8 @@
     posLotsEl.style.borderColor = 'var(--hairline)';
 
     const baseEq = parseFloat(equityEl.value) || 0;
-    const eqAtOpen = baseEq + totalPLAt(entry); // same equity the lots were sized on
+    // same equity the lots were sized on: floating profit only for later trades, account equity for the first
+    const eqAtOpen = openTrades().length > 0 ? floatingAt(entry) : baseEq + totalPLAt(entry);
     const levAtOpen = getLeverageFor(eqAtOpen);
     const newDir = dirForNewTrade(entry);
     if (newDir) openTrades().forEach(p => { if (!p.dir) p.dir = newDir; });
