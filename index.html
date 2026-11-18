@@ -405,6 +405,44 @@
     padding: 18px 10px;
   }
 
+  /* Fit the screen: no sideways scrolling */
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .wrap { width: 100%; }
+  .row .field { min-width: 0; }
+  .result-card .result-headline {
+    flex-wrap: wrap !important;
+    gap: 6px 10px !important;
+    justify-content: space-around !important;
+  }
+  .result-card .result-headline > div { min-width: 0; }
+  .result-card .result-headline .value { font-size: 0.72rem; }
+  .pos-grid > div { min-width: 0; }
+
+  /* Pop-out for Close all */
+  .modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 100;
+  }
+  .modal {
+    width: 100%;
+    max-width: 340px;
+    background: var(--panel);
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .modal h2 {
+    margin: 0 0 10px;
+    font-family: 'Fraunces', serif;
+    font-size: 1.05rem;
+  }
+
   .wanpis-mark {
     position: fixed;
     bottom: 14px;
@@ -593,20 +631,6 @@
 
   <div id="positionsView" style="display:none;">
 
-    <div class="card" style="margin-bottom:8px;">
-      <div class="row">
-        <div class="field">
-          <label for="livePrice">Live price (USD)</label>
-          <input type="number" id="livePrice" step="any" placeholder="e.g. 4300">
-        </div>
-        <div class="field">
-          <label>&nbsp;</label>
-          <button id="useCalcPrice" class="btn-secondary">Use calculator price</button>
-        </div>
-      </div>
-      <div class="mini-note">Used to value any position left with no close price (i.e. still open).</div>
-    </div>
-
     <div class="result-card" style="margin-bottom:8px;">
       <div class="result-headline" style="display:flex; justify-content:center; gap:18px; text-align:center;">
         <div>
@@ -645,7 +669,8 @@
       <div class="row">
         <div class="field">
           <label for="posLots">Lots</label>
-          <input type="number" id="posLots" step="0.01" placeholder="e.g. 0.03">
+          <input type="number" id="posLots" step="0.01" placeholder="auto (MDR 40%)">
+          <div class="mini-note" id="posLotsHint"></div>
         </div>
         <div class="field">
           <label for="posClose">Close price (optional)</label>
@@ -662,6 +687,18 @@
     <div id="positionsList"></div>
 
     <div class="field" style="margin-top:4px;">
+      <button id="closeAllBtn" class="btn-primary" style="margin-bottom:8px;">Close all open trades</button>
+      <div id="closeAllBox" class="modal-bg">
+        <div class="modal">
+          <h2>Close all open trades</h2>
+          <label for="closeAllPrice">Close price (USD)</label>
+          <input type="number" id="closeAllPrice" step="any" placeholder="e.g. 4005">
+          <div class="row" style="margin-top:12px;">
+            <button id="closeAllCancel" class="btn-secondary">Cancel</button>
+            <button id="closeAllConfirm" class="btn-primary">Close all</button>
+          </div>
+        </div>
+      </div>
       <button id="clearPositionsBtn" class="btn-secondary">Clear all positions</button>
     </div>
 
@@ -998,8 +1035,6 @@
     });
   });
 
-  const livePriceEl = document.getElementById('livePrice');
-  const useCalcPriceBtn = document.getElementById('useCalcPrice');
   const posDirBtns = document.querySelectorAll('#posDirToggle button');
   const posEntryEl = document.getElementById('posEntry');
   const posLotsEl = document.getElementById('posLots');
@@ -1012,12 +1047,27 @@
   let positions = []; // {id, dir, entry, lots, close(number|null), note}
   let posDirection = 'buy';
 
-  function computePL(pos, livePrice) {
+  // No live price anywhere. Open trades are valued at the price of the NEXT trade:
+  // the Entry price you are typing, or the most recent trade's entry if the field is empty.
+  function markPrice() {
+    const e = parseFloat(posEntryEl.value);
+    if (!isNaN(e) && e > 0) return e;
+    if (positions.length) return positions[positions.length - 1].entry;
+    return null;
+  }
+
+  function computePL(pos, mark) {
     const hasClose = pos.close !== null && pos.close !== undefined && !isNaN(pos.close);
-    const closeVal = hasClose ? pos.close : livePrice;
+    const closeVal = hasClose ? pos.close : mark;
     if (closeVal === null || closeVal === undefined || isNaN(closeVal)) return null;
     const unitMove = pos.lots * 100; // XAUUSD, 100 oz/lot, matches calculator tab
     return pos.dir === 'buy' ? (closeVal - pos.entry) * unitMove : (pos.entry - closeVal) * unitMove;
+  }
+
+  function totalPLAt(mark) {
+    let t = 0;
+    positions.forEach(p => { const pl = computePL(p, mark); if (pl !== null) t += pl; });
+    return t;
   }
 
   function fmtSignedUSD(n) {
@@ -1026,8 +1076,7 @@
   }
 
   function renderPositions() {
-    const livePrice = parseFloat(livePriceEl.value);
-    const liveVal = isNaN(livePrice) ? null : livePrice;
+    const mark = markPrice();
 
     let totalPL = 0;
     let anyPL = false;
@@ -1042,7 +1091,7 @@
       // newest first
       [...positions].reverse().forEach(pos => {
         const isOpen = pos.close === null || pos.close === undefined || isNaN(pos.close);
-        const pl = computePL(pos, liveVal);
+        const pl = computePL(pos, mark);
         if (pl !== null) { totalPL += pl; anyPL = true; }
         if (isOpen) openCount++; else closedCount++;
         totalLots += pos.lots;
@@ -1067,8 +1116,8 @@
                 <div class="v">${pos.lots.toFixed(2)}</div>
               </div>
               <div>
-                <div class="l">${isOpen ? 'Valued at (live)' : 'Close'}</div>
-                <div class="v">${isOpen ? (liveVal !== null ? '$' + liveVal.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—') : '$' + pos.close.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                <div class="l">${isOpen ? 'Valued at' : 'Close'}</div>
+                <div class="v">${isOpen ? (mark !== null ? '$' + mark.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—') : '$' + pos.close.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
               </div>
               <div class="pos-pl" style="grid-column: span 3;">
                 <div class="l">${isOpen ? 'Unrealized P/L' : 'Realized P/L'}</div>
@@ -1095,7 +1144,45 @@
     document.getElementById('openCount').textContent = openCount;
     document.getElementById('closedCount').textContent = closedCount;
     document.getElementById('totalLots').textContent = totalLots.toFixed(2);
+
+    updatePosLots();
   }
+
+  function getLeverageFor(eq) {
+    let lev;
+    if (leverageMode === 'auto') lev = equityTier(eq).max;
+    else if (manualLeverageEl.value === 'unlimited') lev = 1000000;
+    else lev = parseFloat(manualLeverageEl.value);
+    if (newsCapEl.checked && lev > 200) lev = 200;
+    return lev;
+  }
+
+  // Lots for the next trade = 40% MDR of (calculator equity + profit of the trades before it,
+  // valued at the next trade's entry price).
+  function updatePosLots() {
+    if (document.activeElement === posLotsEl) return; // don't overwrite while typing
+    const hintEl = document.getElementById('posLotsHint');
+    const baseEquity = parseFloat(equityEl.value) || 0;
+    const calcPrice = parseFloat(priceEl.value);
+    const mark = markPrice();
+    const p = mark !== null ? mark : calcPrice;
+    const profit = positions.length ? totalPLAt(p) : 0;
+    const eq = baseEquity + profit;
+    if (!(eq > 0) || !(p > 0)) {
+      posLotsEl.value = '';
+      hintEl.textContent = 'Enter the entry price to auto-size lots.';
+      return;
+    }
+    const lev = getLeverageFor(eq);
+    const maxLots = (eq * lev) / (100 * p);
+    posLotsEl.value = (maxLots * 0.4).toFixed(2);
+    hintEl.textContent = `MDR 40% of ${fmtUSD(eq)} (base ${fmtUSD(baseEquity)} ${profit >= 0 ? '+' : '-'} ${fmtUSD(Math.abs(profit))} profit) @ ${p}`;
+  }
+
+  ['input', 'change', 'click', 'focusout'].forEach(evt =>
+    document.addEventListener(evt, () => setTimeout(updatePosLots, 0)));
+
+  posEntryEl.addEventListener('input', renderPositions);
 
   function escapeHtml(s) {
     const d = document.createElement('div');
@@ -1109,17 +1196,6 @@
       btn.classList.add('active');
       posDirection = btn.getAttribute('data-dir');
     });
-  });
-
-  useCalcPriceBtn.addEventListener('click', () => {
-    livePriceEl.value = priceEl.value;
-    renderPositions();
-    savePositionsState();
-  });
-
-  livePriceEl.addEventListener('input', () => {
-    renderPositions();
-    savePositionsState();
   });
 
   addPositionBtn.addEventListener('click', () => {
@@ -1154,6 +1230,38 @@
     savePositionsState();
   });
 
+  const closeAllBox = document.getElementById('closeAllBox');
+  const closeAllPriceEl = document.getElementById('closeAllPrice');
+  const isOpenPos = p => p.close === null || p.close === undefined || isNaN(p.close);
+
+  document.getElementById('closeAllBtn').addEventListener('click', () => {
+    if (!positions.some(isOpenPos)) return;
+    closeAllBox.style.display = 'flex';
+    closeAllPriceEl.value = '';
+    closeAllPriceEl.focus();
+  });
+
+  document.getElementById('closeAllCancel').addEventListener('click', () => {
+    closeAllBox.style.display = 'none';
+  });
+  closeAllBox.addEventListener('click', (e) => {
+    if (e.target === closeAllBox) closeAllBox.style.display = 'none'; // tap outside to cancel
+  });
+
+  document.getElementById('closeAllConfirm').addEventListener('click', () => {
+    const price = parseFloat(closeAllPriceEl.value);
+    if (isNaN(price) || price <= 0) {
+      closeAllPriceEl.style.borderColor = 'var(--rust)';
+      return;
+    }
+    closeAllPriceEl.style.borderColor = 'var(--hairline)';
+    positions.forEach(p => { if (isOpenPos(p)) p.close = price; });
+    posEntryEl.value = '';
+    closeAllBox.style.display = 'none';
+    renderPositions();
+    savePositionsState();
+  });
+
   clearPositionsBtn.addEventListener('click', () => {
     if (positions.length === 0) return;
     if (confirm('Clear all positions? This can\'t be undone.')) {
@@ -1167,7 +1275,6 @@
     const activeTab = document.querySelector('#tabNav button.active')?.getAttribute('data-tab') || 'calc';
     const state = {
       positions: positions,
-      livePrice: livePriceEl.value,
       activeTab: activeTab
     };
     try {
@@ -1183,7 +1290,6 @@
       if (result && result.value) {
         const s = JSON.parse(result.value);
         if (Array.isArray(s.positions)) positions = s.positions;
-        if (s.livePrice !== undefined) livePriceEl.value = s.livePrice;
         if (s.activeTab === 'positions') {
           tabBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === 'positions'));
           calcView.style.display = 'none';
