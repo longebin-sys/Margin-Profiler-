@@ -443,6 +443,35 @@
     font-size: 1.05rem;
   }
 
+  .mini-toggle {
+    display: inline-flex;
+    background: var(--panel-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 2px;
+  }
+  .mini-toggle button {
+    border: none;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .mini-toggle button.active { background: var(--gold); color: #1a1712; font-weight: 700; }
+  .split {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--gold-bright);
+    margin-top: 2px;
+    padding-top: 5px;
+    border-top: 1px solid var(--hairline);
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
   .wanpis-mark {
     position: fixed;
     bottom: 14px;
@@ -632,22 +661,22 @@
   <div id="positionsView" style="display:none;">
 
     <div class="result-card" style="margin-bottom:8px;">
-      <div class="result-headline" style="display:flex; justify-content:center; gap:18px; text-align:center;">
+      <div class="result-headline" style="display:flex; justify-content:center; gap:18px; text-align:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
         <div>
           <div class="label">Total P/L</div>
           <div class="value" id="totalPL">$0.00</div>
         </div>
         <div>
-          <div class="label">Open</div>
-          <div class="value" id="openCount">0</div>
+          <div class="label">Max lots per trade</div>
+          <div class="mini-toggle" id="maxLotToggle">
+            <button data-max="200" class="active">200</button>
+            <button data-max="100">100</button>
+          </div>
         </div>
         <div>
-          <div class="label">Closed</div>
-          <div class="value" id="closedCount">0</div>
-        </div>
-        <div>
-          <div class="label">Total lots</div>
-          <div class="value" id="totalLots">0.00</div>
+          <div class="label">Total orders</div>
+          <div class="value" id="totalOrders">0</div>
+          <div class="mini-note" id="orderBreakdown"></div>
         </div>
       </div>
     </div>
@@ -664,6 +693,7 @@
           <label for="posLots">Lots</label>
           <input type="number" id="posLots" step="0.01" placeholder="auto (MDR 40%)">
           <div class="mini-note" id="posLotsHint"></div>
+          <div class="split" id="posSplit" style="display:none;"></div>
         </div>
         <div class="field">
           <label for="posClose">Close price (optional)</label>
@@ -1122,9 +1152,8 @@
 
     let totalPL = 0;
     let anyPL = false;
-    let openCount = 0;
-    let closedCount = 0;
-    let totalLots = 0;
+    let ordersOpen = 0;
+    let ordersClosed = 0;
 
     if (positions.length === 0) {
       positionsListEl.innerHTML = '<div class="pos-empty">No positions yet — add your first entry above.</div>';
@@ -1135,8 +1164,7 @@
         const isOpen = pos.close === null || pos.close === undefined || isNaN(pos.close);
         const pl = computePL(pos, mark);
         if (pl !== null) { totalPL += pl; anyPL = true; }
-        if (isOpen) openCount++; else closedCount++;
-        totalLots += pos.lots;
+        if (isOpen) ordersOpen += orderCount(pos.lots); else ordersClosed += orderCount(pos.lots);
 
         const plClass = pl === null ? '' : (pl >= 0 ? 'pos' : 'neg');
         html += `
@@ -1169,6 +1197,7 @@
                 <div class="l">Stop-out price</div>
                 <div class="v" style="color:var(--rust);">${stopOutText(pos, mark)}</div>
               </div>
+              ${splitText(pos.lots) ? `<div class="split" style="grid-column: span 3;">Open as ${splitText(pos.lots)}</div>` : ''}
             </div>
           </div>`;
       });
@@ -1186,12 +1215,56 @@
 
     document.getElementById('totalPL').textContent = anyPL ? fmtSignedUSD(totalPL) : '$0.00';
     document.getElementById('totalPL').style.color = !anyPL ? '' : (totalPL >= 0 ? 'var(--teal)' : 'var(--rust)');
-    document.getElementById('openCount').textContent = openCount;
-    document.getElementById('closedCount').textContent = closedCount;
-    document.getElementById('totalLots').textContent = totalLots.toFixed(2);
+    document.getElementById('totalOrders').textContent = ordersOpen + ordersClosed;
+    document.getElementById('orderBreakdown').textContent = (ordersOpen + ordersClosed) ? `open ${ordersOpen} · closed ${ordersClosed}` : '';
 
     updatePosLots();
+    updatePosSplit();
   }
+
+  // Number of separate orders a trade needs: the split count for sizes over 1000 lots, otherwise 1.
+  function orderCount(lots) {
+    if (!(lots > 1000)) return 1;
+    const units = Math.round(lots * 100);
+    const maxU = maxLot * 100;
+    const full = Math.floor(units / maxU);
+    return full + (units - full * maxU > 0 ? 1 : 0);
+  }
+
+  // Exness caps a single trade (200 lots). Only for big sizes (over 1000 lots), show how to
+  // open it: N trades of the max size plus one trade for the remainder (the decimals).
+  let maxLot = 200;
+
+  function splitText(lots) {
+    if (!(lots > 1000)) return '';
+    const units = Math.round(lots * 100);
+    const maxU = maxLot * 100;
+    const full = Math.floor(units / maxU);
+    const rem = units - full * maxU;
+    let t = full + '×' + maxLot;
+    if (rem > 0) t += ' + 1×' + (rem / 100).toFixed(2);
+    return t;
+  }
+
+  function updatePosSplit() {
+    const el = document.getElementById('posSplit');
+    const t = splitText(parseFloat(posLotsEl.value));
+    el.style.display = t ? '' : 'none';
+    el.textContent = t ? 'Open as ' + t : '';
+  }
+
+  const maxLotBtns = document.querySelectorAll('#maxLotToggle button');
+  function syncMaxLotToggle() {
+    maxLotBtns.forEach(b => b.classList.toggle('active', Number(b.getAttribute('data-max')) === maxLot));
+  }
+  maxLotBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      maxLot = Number(btn.getAttribute('data-max'));
+      syncMaxLotToggle();
+      renderPositions();
+      savePositionsState();
+    });
+  });
 
   const SUB_STOP_DIST = 30; // subsequent trades: stop-out $30 (3000 pips) from entry
 
@@ -1245,7 +1318,7 @@
   }
 
   ['input', 'change', 'click', 'focusout'].forEach(evt =>
-    document.addEventListener(evt, () => setTimeout(updatePosLots, 0)));
+    document.addEventListener(evt, () => setTimeout(() => { updatePosLots(); updatePosSplit(); }, 0)));
 
   posEntryEl.addEventListener('input', renderPositions);
 
@@ -1340,6 +1413,7 @@
     const activeTab = document.querySelector('#tabNav button.active')?.getAttribute('data-tab') || 'calc';
     const state = {
       positions: positions,
+      maxLot: maxLot,
       activeTab: activeTab
     };
     try {
@@ -1355,6 +1429,7 @@
       if (result && result.value) {
         const s = JSON.parse(result.value);
         if (Array.isArray(s.positions)) positions = s.positions;
+        if (s.maxLot === 100 || s.maxLot === 200) { maxLot = s.maxLot; syncMaxLotToggle(); }
         if (s.activeTab === 'positions') {
           tabBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === 'positions'));
           calcView.style.display = 'none';
