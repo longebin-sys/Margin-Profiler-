@@ -443,6 +443,18 @@
     font-size: 1.05rem;
   }
 
+  .acct-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid var(--hairline);
+    text-align: center;
+  }
+  .acct-strip > div { min-width: 0; }
+  .acct-strip .al { font-size: 0.5rem; color: var(--ink-dim); margin-bottom: 2px; white-space: nowrap; }
+  .acct-strip .av { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; word-break: break-all; }
   .mini-toggle {
     display: inline-flex;
     background: var(--panel-raised);
@@ -678,6 +690,13 @@
           <div class="value" id="totalOrders">0</div>
           <div class="mini-note" id="orderBreakdown"></div>
         </div>
+      </div>
+      <div class="acct-strip">
+        <div><div class="al">Balance</div><div class="av" id="acBalance">—</div></div>
+        <div><div class="al">Equity</div><div class="av" id="acEquity">—</div></div>
+        <div><div class="al">Margin</div><div class="av" id="acMargin">—</div></div>
+        <div><div class="al">Free margin</div><div class="av" id="acFree">—</div></div>
+        <div><div class="al">Margin level</div><div class="av" id="acLevel">—</div></div>
       </div>
     </div>
 
@@ -1108,11 +1127,29 @@
     return (isFinite(price) && price > 0) ? price : null;
   }
 
+  // Price where the whole account (balance + closed P/L + all open trades) reaches the stop-out level.
+  function accountStopOutPrice(dir) {
+    const open = openTrades();
+    const L = open.reduce((t, p) => t + p.lots, 0);
+    if (!(L > 0) || !dir) return null;
+    const thr = (accountTypeEl.value.split(',').map(Number)[0]) || 0;
+    const baseEq = parseFloat(equityEl.value) || 0;
+    const closedPL = positions.filter(p => !open.includes(p)).reduce((t, p) => t + (computePL(p, null) || 0), 0);
+    const balance = baseEq + closedPL;
+    const levDefault = getLeverageFor(balance > 0 ? balance : 1);
+    const margin = open.reduce((t, p) => t + p.lots * 100 * p.entry / (p.lev || levDefault), 0);
+    const S = open.reduce((t, p) => t + p.lots * p.entry, 0);
+    const target = (thr / 100) * margin - balance; // equity must fall to thr% of margin
+    const price = dir === 'sell' ? (S * 100 - target) / (L * 100) : (target + S * 100) / (L * 100);
+    return (isFinite(price) && price > 0) ? price : null;
+  }
+
   function fmtPrice(n) {
     return n === null ? '—' : '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
   }
 
   function stopOutText(pos, mark) {
+    if (pos.so) return fmtPrice(pos.so);
     const dir = effDir(pos, mark);
     if (dir) return fmtPrice(stopOutPrice(pos, dir));
     // direction not known yet (first trade): show both possibilities
@@ -1218,8 +1255,44 @@
     document.getElementById('totalOrders').textContent = ordersOpen + ordersClosed;
     document.getElementById('orderBreakdown').textContent = (ordersOpen + ordersClosed) ? `open ${ordersOpen} · closed ${ordersClosed}` : '';
 
+    updateAccountStrip(mark);
+
     updatePosLots();
     updatePosSplit();
+  }
+
+  // Exness-style account figures, valued at the next entry price (or the latest trade's entry):
+  //   Balance = starting equity + closed P/L        Equity = Balance + floating P/L
+  //   Margin  = sum of lots x 100 x open price / leverage (open trades only)
+  //   Free margin = Equity - Margin                 Margin level = Equity / Margin x 100
+  function fmtUSD0(n) {
+    if (!isFinite(n)) return '—';
+    return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
+
+  function updateAccountStrip(mark) {
+    const baseEq = parseFloat(equityEl.value) || 0;
+    const closedPL = positions.filter(p => !openTrades().includes(p)).reduce((t, p) => t + (computePL(p, mark) || 0), 0);
+    const balance = baseEq + closedPL;
+    const floating = mark !== null ? floatingAt(mark) : 0;
+    const equity = balance + floating;
+    const margin = openTrades().reduce((t, p) => {
+      const lev = p.lev || getLeverageFor(equity);
+      return t + (lev > 0 ? p.lots * 100 * p.entry / lev : 0);
+    }, 0);
+    const free = equity - margin;
+    const level = margin > 0 ? (equity / margin) * 100 : null;
+    const [stopOutPct, callPct] = accountTypeEl.value.split(',').map(Number);
+
+    document.getElementById('acBalance').textContent = fmtUSD0(balance);
+    document.getElementById('acEquity').textContent = fmtUSD0(equity);
+    document.getElementById('acMargin').textContent = fmtUSD0(margin);
+    const freeEl = document.getElementById('acFree');
+    freeEl.textContent = fmtUSD0(free);
+    freeEl.style.color = free < 0 ? 'var(--rust)' : '';
+    const levelEl = document.getElementById('acLevel');
+    levelEl.textContent = level === null ? '—' : level.toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%';
+    levelEl.style.color = level === null ? '' : (level <= Math.max(stopOutPct, callPct) ? 'var(--rust)' : (level < 150 ? 'var(--amber)' : 'var(--teal)'));
   }
 
   // Number of separate orders a trade needs: the split count for sizes over 1000 lots, otherwise 1.
@@ -1304,12 +1377,39 @@
     const lev = getLeverageFor(eq);
     const eqText = `${fmtUSD(eq)} (base ${fmtUSD(baseEquity)} ${profit >= 0 ? '+' : '-'} ${fmtUSD(Math.abs(profit))} profit)`;
     if (isSub) {
-      // Subsequent trades: size so this trade's stop-out lands SUB_STOP_DIST ($30 = 3000 pips) from entry.
-      // Stop-out when: eq - lots*100*dist = lots*100*p/lev * stopOut%  ->  solve for lots.
+      // Subsequent trades: size so the WHOLE ACCOUNT's stop-out (all open trades + this one losing together)
+      // sits SUB_STOP_DIST ($30 = 3000 pips) from this entry, risking floating profit only.
+      //   at P* = p -/+ 30:  floating(P*) of the open trades - thr% x margin(open)
+      //   lots = ------------------------------------------------------------------
+      //                   100 x (30 + thr% x p / leverage)
+      // Then capped so the new trade's margin fits in the account's free margin.
+      const dir = dirForNewTrade(p);
+      if (!dir) {
+        posLotsEl.value = '';
+        hintEl.textContent = 'Enter a price different from the first entry.';
+        return;
+      }
       const thr = (accountTypeEl.value.split(',').map(Number)[0]) || 0;
-      const lots = eq / (100 * (SUB_STOP_DIST + (p * thr) / (100 * lev)));
-      posLotsEl.value = (Math.floor(lots * 100) / 100).toFixed(2); // round down so stop-out is never closer than $30
-      hintEl.textContent = `Floating profit ${fmtUSD(floating)} only — stop-out $${SUB_STOP_DIST} (${SUB_STOP_DIST * 100} pips) away @ ${p}`;
+      const open = openTrades();
+      const plAt = (t, price) => (dir === 'buy' ? (price - t.entry) : (t.entry - price)) * t.lots * 100;
+      const pStar = dir === 'sell' ? p + SUB_STOP_DIST : p - SUB_STOP_DIST;
+      const floatStar = open.reduce((t, tr) => t + plAt(tr, pStar), 0);
+      const realEq = baseEquity + profit; // actual account equity at this price
+      const levNew = getLeverageFor(realEq);
+      const marginOld = open.reduce((t, tr) => t + tr.lots * 100 * tr.entry / (tr.lev || levNew), 0);
+      let lots = (floatStar - (thr / 100) * marginOld) / (100 * (SUB_STOP_DIST + (thr / 100) * p / levNew));
+      let capped = false;
+      const freeMargin = realEq - marginOld;
+      const maxAffordable = freeMargin > 0 ? (freeMargin * levNew) / (100 * p) : 0;
+      if (lots > maxAffordable) { lots = maxAffordable; capped = true; }
+      lots = Math.floor(lots * 100) / 100; // round down so the stop-out is never closer than $30
+      if (!(lots >= 0.01)) {
+        posLotsEl.value = '';
+        hintEl.textContent = capped ? 'Not enough free margin for another trade.' : `Floating profit would be gone before a $${SUB_STOP_DIST} move — no safe size.`;
+        return;
+      }
+      posLotsEl.value = lots.toFixed(2);
+      hintEl.textContent = `Floating profit ${fmtUSD(floating)} only — account stop-out $${SUB_STOP_DIST} (${SUB_STOP_DIST * 100} pips) away @ ${p}` + (capped ? ' · capped by free margin' : '');
     } else {
       const maxLots = (eq * lev) / (100 * p);
       posLotsEl.value = (maxLots * 0.4).toFixed(2);
@@ -1349,7 +1449,7 @@
     const newDir = dirForNewTrade(entry);
     if (newDir) openTrades().forEach(p => { if (!p.dir) p.dir = newDir; });
 
-    positions.push({
+    const newPos = {
       id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
       dir: newDir,
       eq: eqAtOpen,
@@ -1358,7 +1458,13 @@
       lots: lots,
       close: (close !== null && !isNaN(close)) ? close : null,
       note: ''
-    });
+    };
+    const hadOpen = openTrades().length > 0;
+    positions.push(newPos);
+    if (hadOpen && newDir && newPos.close === null) {
+      const so = accountStopOutPrice(newDir);
+      if (so !== null) newPos.so = so; // account stop-out right after this trade was opened
+    }
 
     posEntryEl.value = '';
     posLotsEl.value = '';
