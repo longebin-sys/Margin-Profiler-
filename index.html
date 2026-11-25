@@ -827,7 +827,7 @@
         <div><div class="al">Equity</div><div class="av" id="acEquity">—</div></div>
         <div><div class="al">Margin</div><div class="av" id="acMargin">—</div></div>
         <div><div class="al">Free</div><div class="av" id="acFree">—</div></div>
-        <div><div class="al">Level</div><div class="av" id="acLevel">—</div></div>
+        <div><div class="al">Safe lots</div><div class="av" id="acSafe" style="color:var(--teal);">—</div></div>
         <div><div class="al">Orders</div><div class="av"><span id="totalOrders">0</span> <span id="orderBreakdown" style="display:block;font-size:0.5rem;color:var(--ink-muted);word-break:normal;line-height:1.2;"></span></div></div>
       </div>
     </div>
@@ -1447,9 +1447,13 @@
     const freeEl = document.getElementById('acFree');
     freeEl.textContent = fmtUSD0(free);
     freeEl.style.color = free < 0 ? 'var(--rust)' : '';
-    const levelEl = document.getElementById('acLevel');
-    levelEl.textContent = level === null ? '—' : level.toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%';
-    levelEl.style.color = level === null ? '' : (level <= Math.max(stopOutPct, callPct) ? 'var(--rust)' : (level < 150 ? 'var(--amber)' : 'var(--teal)'));
+    // Safe lots: same formula as the Calculator tab (max lots / 1.7 / 2), for the selected instrument at the entry price
+    const safeEl = document.getElementById('acSafe');
+    const sp = markFor(instrument) || parseFloat(priceEl.value) || 0;
+    const slev = getLeverageFor(equity > 0 ? equity : 1);
+    const maxL = (equity > 0 && sp > 0 && slev > 0) ? (equity * slev) / (CS(instrument) * sp) : 0;
+    const safeLots = maxL / 1.7 / 2;
+    safeEl.textContent = safeLots > 0 ? safeLots.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
   }
 
   let maxLot = 200;
@@ -1684,6 +1688,7 @@
     document.addEventListener(evt, () => setTimeout(() => { updatePosLots(); updatePosPreview(); updatePosSplit(); }, 0)));
 
   posEntryEl.addEventListener('input', renderPositions);
+  document.querySelectorAll('#tabNav button').forEach(b => b.addEventListener('click', () => setTimeout(renderPositions, 0)));
 
   function escapeHtml(s) {
     const d = document.createElement('div');
