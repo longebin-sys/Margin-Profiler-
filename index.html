@@ -436,9 +436,15 @@
     font-size: 0.88rem;
     font-weight: 600;
   }
+  /* Stop-out price: big and easy to read */
+  .so-box { min-width: 0; padding: 2px 10px; border-left: 1px solid var(--hairline); }
+  .so-box .label { font-size: 0.66rem; font-weight: 600; color: var(--ink); }
+  #soBig { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 800; line-height: 1.1; color: var(--rust); word-break: break-word; }
+  #soBig.two { font-size: 0.95rem; line-height: 1.25; }
+  #soSub { font-size: 0.58rem; color: var(--ink-dim); margin-top: 2px; }
   .acct-strip {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 2px;
     padding-top: 6px;
     border-top: 1px solid var(--hairline);
@@ -653,11 +659,11 @@
   </div>
 
   <div class="tab-nav" id="tabNav">
-    <button data-tab="calc" class="active">Calculator</button>
-    <button data-tab="positions">Positions</button>
+    <button data-tab="positions" class="active">Positions</button>
+    <button data-tab="calc">Calculator</button>
   </div>
 
-  <div id="calcView">
+  <div id="calcView" style="display:none;">
 
   <!-- Main results — Stop-out is primary -->
   <div class="result-card">
@@ -794,7 +800,7 @@
   </div>
   <!-- /calcView -->
 
-  <div id="positionsView" style="display:none;">
+  <div id="positionsView">
 
     <div class="pos-summary">
       <div class="pos-summary-top">
@@ -810,10 +816,10 @@
           </div>
           <div class="mini-note" id="maxLotNote"></div>
         </div>
-        <div>
-          <div class="label">Total orders</div>
-          <div class="value" id="totalOrders">0</div>
-          <div class="mini-note" id="orderBreakdown"></div>
+        <div class="so-box">
+          <div class="label">Stop-out price</div>
+          <div id="soBig">—</div>
+          <div id="soSub"></div>
         </div>
       </div>
       <div class="acct-strip">
@@ -822,6 +828,7 @@
         <div><div class="al">Margin</div><div class="av" id="acMargin">—</div></div>
         <div><div class="al">Free</div><div class="av" id="acFree">—</div></div>
         <div><div class="al">Level</div><div class="av" id="acLevel">—</div></div>
+        <div><div class="al">Orders</div><div class="av"><span id="totalOrders">0</span> <span id="orderBreakdown" style="display:block;font-size:0.5rem;color:var(--ink-muted);word-break:normal;line-height:1.2;"></span></div></div>
       </div>
     </div>
 
@@ -1308,7 +1315,8 @@
     return (isFinite(price) && price > 0) ? price : null;
   }
 
-  function fmtPrice(n) { return n === null ? '—' : '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+  const pdig = n => Math.abs(n) < 1000 ? 3 : 2;
+  function fmtPrice(n) { return n === null ? '—' : '$' + n.toLocaleString('en-US', { maximumFractionDigits: pdig(n) }); }
 
   function stopOutText(pos) {
     if (pos.so) return fmtPrice(pos.so);
@@ -1385,9 +1393,9 @@
               <button class="pos-del" data-id="${pos.id}" title="Delete">✕</button>
             </div>
             <div class="pos-grid">
-              <div><div class="l">Entry</div><div class="v">$${pos.entry.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div></div>
+              <div><div class="l">Entry</div><div class="v">$${pos.entry.toLocaleString('en-US', { maximumFractionDigits: pdig(pos.entry) })}</div></div>
               <div><div class="l">Lots</div><div class="v">${pos.lots.toFixed(2)}</div></div>
-              <div><div class="l">${isOpen ? 'Valued at' : 'Close'}</div><div class="v">${isOpen ? (mark !== null ? '$' + mark.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—') : '$' + pos.close.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div></div>
+              <div><div class="l">${isOpen ? 'Valued at' : 'Close'}</div><div class="v">${isOpen ? (mark !== null ? '$' + mark.toLocaleString('en-US', { maximumFractionDigits: pdig(mark) }) : '—') : '$' + pos.close.toLocaleString('en-US', { maximumFractionDigits: pdig(pos.close) })}</div></div>
               <div class="pos-pl"><div class="l">${isOpen ? 'Unrealized P/L' : 'Realized P/L'}</div><div class="v ${plClass}">${fmtSignedUSD(pl)}</div></div>
               <div style="grid-column: span 2;"><div class="l">Stop-out price</div><div class="v" style="color:var(--rust);">${stopOutText(pos)}</div></div>
               ${sp ? `<div class="split" style="grid-column: span 3;">Open as ${sp}</div>` : ''}
@@ -1413,6 +1421,7 @@
     syncExtras();
     updateAccountStrip();
     updatePosLots();
+    updatePosPreview();
     updatePosSplit();
   }
 
@@ -1525,6 +1534,9 @@
     });
   });
 
+  // First-trade and later-trade stop-out distances in dollars. BTC 460/550 (tick 0.01). Silver 0.40/0.50 (400/500 ticks of 0.001).
+  const FIRST_DIST = { XAUUSD: 30, BTCUSD: 460, XAGUSD: 0.40 };
+  const SUB_DIST = { BTCUSD: 550, XAGUSD: 0.50 };
   const FIRST_MDR = { XAUUSD: 0.4, BTCUSD: 0.3, XAGUSD: 0.3 }; // first-entry share of max lots
   const STOP_FRAC = 0.3; // BTC/silver: stop-out distance costs 30% of that instrument's floating profit
   const SUB_STOP_DIST = 30; // XAUUSD: later trades get a stop-out $30 (3000 pips) from entry
@@ -1533,6 +1545,7 @@
   // if BTC is added next to an open gold trade, the distance a 40% MDR first BTC trade would have.
   function stopDist(inst, p, lev) {
     if (inst === 'XAUUSD') return SUB_STOP_DIST;
+    if (SUB_DIST[inst]) return SUB_DIST[inst];
     const thr = thrPct();
     const sameOpen = openTrades(inst);
     if (sameOpen.length) {
@@ -1549,7 +1562,7 @@
 
   function distText(inst, d) {
     if (inst === 'XAUUSD') return `$${d} (${d * 100} pips)`;
-    return '$' + d.toLocaleString('en-US', { maximumFractionDigits: inst === 'XAGUSD' ? 2 : 0 });
+    return '$' + d.toLocaleString('en-US', { maximumFractionDigits: inst === 'XAGUSD' ? 3 : 0 });
   }
 
   function getLeverageFor(eq) {
@@ -1579,6 +1592,20 @@
     if (!isSub) {
       if (!(balance > 0) || !(p > 0)) { posLotsEl.value = ''; hintEl.textContent = 'Enter the entry price to auto-size lots.'; return; }
       const lev = getLeverageFor(balance);
+      if (FIRST_DIST[inst]) {
+        const D0 = FIRST_DIST[inst];
+        // lots so that equity hits the stop-out level exactly D0 away, using balance and margin
+        const thrB = thrPct();
+        let l = balance / (cs * (D0 + (thrB / 100) * p / lev));
+        const maxL = (balance * lev) / (cs * p);
+        let cap = false;
+        if (l > maxL) { l = maxL; cap = true; }
+        l = Math.floor(l * 100) / 100;
+        if (!(l >= 0.01)) { posLotsEl.value = ''; hintEl.textContent = `Balance too small for a $${D0} stop-out on ${instLabel(inst)}.`; return; }
+        posLotsEl.value = l.toFixed(2);
+        hintEl.textContent = `First trade: stop-out $${D0} away from ${fmtUSD(balance)} balance @ ${p}` + (cap ? ' · capped by margin (stop-out closer)' : '');
+        return;
+      }
       posLotsEl.value = ((balance * lev) / (cs * p) * FIRST_MDR[inst]).toFixed(2);
       hintEl.textContent = `First trade: MDR ${FIRST_MDR[inst] * 100}% of ${fmtUSD(balance)} @ ${p}`;
       return;
@@ -1616,8 +1643,45 @@
     hintEl.textContent = `Floating profit ${fmtUSD(floating)} only${crossNote} — account stop-out ${distText(inst, dist)} away @ ${p}` + (capped ? ' · capped by free margin' : '');
   }
 
+  // Live stop-out price for the trade being typed (before pressing Add).
+  function updatePosPreview() {
+    const big = document.getElementById('soBig');
+    const sub = document.getElementById('soSub');
+    const show = (txt, note) => {
+      big.innerHTML = txt.replace(' / ', '<br>');
+      big.classList.toggle('two', txt.includes(' / '));
+      sub.textContent = note;
+    };
+    const entry = parseFloat(posEntryEl.value);
+    const lots = parseFloat(posLotsEl.value);
+    const inst = instrument;
+    if (entry > 0 && lots > 0) {
+      if (openTrades().length === 0) {
+        const bal = balanceNow();
+        const fake = { inst, entry, lots, eq: bal, lev: getLeverageFor(bal) };
+        const dir = dirForNewTrade(entry, inst);
+        if (dir) return show(fmtPrice(stopOutPrice(fake, dir)), 'new trade');
+        return show('Sell ' + fmtPrice(stopOutPrice(fake, 'sell')) + ' / Buy ' + fmtPrice(stopOutPrice(fake, 'buy')), 'new trade');
+      }
+      const dir = dirForNewTrade(entry, inst);
+      if (dir) {
+        const lev = getLeverageFor(balanceNow() + floatingAt());
+        positions.push({ id: '__preview', inst, dir, entry, lots, close: null, lev });
+        let so = null;
+        try { so = accountStopOutPrice(inst, dir); } finally { positions.pop(); }
+        return show(fmtPrice(so), 'new trade');
+      }
+    }
+    const open = openTrades();
+    if (open.length) {
+      const last = open[open.length - 1];
+      return show(stopOutText(last), 'last trade · ' + instLabel(last.inst));
+    }
+    show('—', '');
+  }
+
   ['input', 'change', 'click', 'focusout'].forEach(evt =>
-    document.addEventListener(evt, () => setTimeout(() => { updatePosLots(); updatePosSplit(); }, 0)));
+    document.addEventListener(evt, () => setTimeout(() => { updatePosLots(); updatePosPreview(); updatePosSplit(); }, 0)));
 
   posEntryEl.addEventListener('input', renderPositions);
 
@@ -1738,11 +1802,6 @@
         if (s.maxLot === 100 || s.maxLot === 200) { maxLot = s.maxLot; }
         if (s.otherPrices) otherPrices = Object.assign({ XAUUSD: '', BTCUSD: '', XAGUSD: '' }, s.otherPrices);
         if (INST[s.instrument]) { instrument = s.instrument; syncInstToggle(); }
-        if (s.activeTab === 'positions') {
-          tabBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === 'positions'));
-          calcView.style.display = 'none';
-          positionsView.style.display = '';
-        }
       }
     } catch (e) {}
   }
